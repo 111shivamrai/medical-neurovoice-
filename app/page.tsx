@@ -1,20 +1,25 @@
-import Link from 'next/link'
+import { Navbar } from '@/components/landing/Navbar'
+import { HeroSection } from '@/components/landing/HeroSection'
+import { WaveformSection } from '@/components/landing/WaveformSection'
+import { DisordersSection } from '@/components/landing/DisordersSection'
+import { PipelineSection } from '@/components/landing/PipelineSection'
+import { UserTypesSection } from '@/components/landing/UserTypesSection'
+import { TrustSection } from '@/components/landing/TrustSection'
+import { Footer } from '@/components/landing/Footer'
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <main style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      background: '#0A0F1E',
-      color: '#F9FAFB',
-      fontFamily: 'Inter, sans-serif'
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>NeuroVoice</h1>
-        <p style={{ color: '#9CA3AF' }}>Building...</p>
-      </div>
-    </main>
+    <div className="min-h-screen flex flex-col selection:bg-cyan-500/25 selection:text-cyan-200">
+      <Navbar />
+      <main className="flex-1">
+        <HeroSection />
+        <WaveformSection />
+        <DisordersSection />
+        <PipelineSection />
+        <UserTypesSection />
+        <TrustSection />
+      </main>
+      <Footer />
+    </div>
   )
 }

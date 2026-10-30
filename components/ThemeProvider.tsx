@@ -16,17 +16,20 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark')
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    const stored = localStorage.getItem('neurovoice-theme') as Theme
-    const resolved = stored || 'dark'
-    setTheme(resolved)
-    applyTheme(resolved)
+    try {
+      const stored = localStorage.getItem('neurovoice-theme') as Theme | null
+      const resolved = stored === 'light' ? 'light' : 'dark'
+      setTheme(resolved)
+      applyTheme(resolved)
+    } catch {
+      applyTheme('dark')
+    }
   }, [])
 
   const applyTheme = (t: Theme) => {
+    if (typeof document === 'undefined') return
     const html = document.documentElement
     if (t === 'dark') {
       html.classList.add('dark')
@@ -40,11 +43,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = () => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
-    localStorage.setItem('neurovoice-theme', next)
+    try {
+      localStorage.setItem('neurovoice-theme', next)
+    } catch {
+      // ignore
+    }
     applyTheme(next)
   }
-
-  if (!mounted) return <>{children}</>
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
