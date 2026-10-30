@@ -5,301 +5,444 @@ import Link from 'next/link'
 import {
   Mic,
   Activity,
-  FileText,
-  User,
-  Settings,
-  Bell,
-  Search,
-  Download,
-  AlertTriangle,
+  Calendar,
+  Flame,
   CheckCircle2,
-  TrendingDown,
-  TrendingUp,
-  Brain,
-  Play,
-  RotateCcw,
+  FileText,
+  Download,
+  Eye,
+  ArrowRight,
+  ShieldAlert,
+  MapPin,
+  Phone,
+  Clock,
   Sparkles,
-  ArrowUpRight,
 } from 'lucide-react'
-import { Logo } from '@/components/Logo'
 import { useTheme } from '@/components/ThemeProvider'
 import dynamic from 'next/dynamic'
 
-const DashboardCharts = dynamic(
-  () => import('@/components/dashboard/DashboardCharts').then((mod) => mod.DashboardCharts),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-64 rounded-2xl bg-[#111827] border border-[#1F2937] flex items-center justify-center text-xs font-mono text-gray-500 animate-pulse mb-8">
-        Loading Diagnostic Charts...
-      </div>
-    ),
+// Recharts components loaded client-side
+const LineChart = dynamic(() => import('recharts').then((mod) => mod.LineChart), { ssr: false })
+const Line = dynamic(() => import('recharts').then((mod) => mod.Line), { ssr: false })
+const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false })
+const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false })
+const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false })
+const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false })
+const AreaChart = dynamic(() => import('recharts').then((mod) => mod.AreaChart), { ssr: false })
+const Area = dynamic(() => import('recharts').then((mod) => mod.Area), { ssr: false })
+
+export default function DashboardHomePage() {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
+  const [timeFilter, setTimeFilter] = useState<'7D' | '1M' | '3M' | '6M' | '1Y'>('1M')
+
+  const trendData = [
+    { label: 'Week 1', pd: 16, ad: 22, dysarthria: 12, postStroke: 10 },
+    { label: 'Week 2', pd: 15, ad: 20, dysarthria: 11, postStroke: 10 },
+    { label: 'Week 3', pd: 13, ad: 19, dysarthria: 10, postStroke: 9 },
+    { label: 'Week 4', pd: 12, ad: 18, dysarthria: 9, postStroke: 8 },
+  ]
+
+  const sparklineData = [
+    { v: 10 }, { v: 14 }, { v: 12 }, { v: 18 }, { v: 22 }, { v: 28 }, { v: 34 }
+  ]
+
+  const recentReports = [
+    {
+      id: 'rep-8812',
+      date: '28 Oct 2026',
+      flags: 'Zero Active Flags',
+      risk: 'Low (12%)',
+      riskColor: '#10B981',
+      bgRisk: 'rgba(16, 185, 129, 0.1)',
+    },
+    {
+      id: 'rep-8740',
+      date: '14 Oct 2026',
+      flags: 'Mild Pause Hesitation',
+      risk: 'Low (15%)',
+      riskColor: '#10B981',
+      bgRisk: 'rgba(16, 185, 129, 0.1)',
+    },
+    {
+      id: 'rep-8621',
+      date: '28 Sep 2026',
+      flags: 'Slight Pitch Flutter',
+      risk: 'Low (17%)',
+      riskColor: '#10B981',
+      bgRisk: 'rgba(16, 185, 129, 0.1)',
+    },
+    {
+      id: 'rep-8490',
+      date: '14 Sep 2026',
+      flags: 'Subclinical Jitter',
+      risk: 'Moderate (26%)',
+      riskColor: '#F59E0B',
+      bgRisk: 'rgba(245, 158, 11, 0.1)',
+    },
+  ]
+
+  const upcomingAppointments = [
+    {
+      id: 'apt-1',
+      doctor: 'Dr. V. K. Soni',
+      specialty: 'Neurology & Movement Disorders',
+      hospital: 'Jabalpur Medical College',
+      time: 'Tomorrow, 10:30 AM',
+      mode: 'In-Person OPD 4',
+    },
+    {
+      id: 'apt-2',
+      doctor: 'Dr. Meenakshi Sahu',
+      specialty: 'Speech & Swallowing Rehab',
+      hospital: 'Apex Rehab Centre, Jabalpur',
+      time: '08 Nov 2026, 03:00 PM',
+      mode: 'Tele-Consultation',
+    },
+  ]
+
+  const recommendedDoctors = [
+    {
+      name: 'Dr. Ananya Mishra',
+      specialty: 'Cognitive Neurology & Memory Care',
+      hospital: 'Super Specialty Wing, Jabalpur Medical College',
+      city: 'Jabalpur',
+      distance: '2.8 km away',
+      languages: 'Hindi, English',
+    },
+    {
+      name: 'Dr. Sudhir Sharma',
+      specialty: 'Stroke Recovery & Neuro-Intensive Care',
+      hospital: 'Metro Hospital & Heart Institute',
+      city: 'Jabalpur',
+      distance: '4.1 km away',
+      languages: 'Hindi, English',
+    },
+  ]
+
+  const downloadSamplePDF = () => {
+    window.open('http://localhost:8000/api/reports/rep-8812/pdf', '_blank')
   }
-)
-
-export default function DashboardPage() {
-  const { theme, toggleTheme } = useTheme()
-  const [selectedPatient, setSelectedPatient] = useState('P-10492 (Rameshwar Patel)')
-  const [activeTab, setActiveTab] = useState<'overview' | 'screening' | 'patients' | 'reports'>('overview')
-
-  // Sample data for charts
-  const longitudinalData = [
-    { month: 'Jun', parkinsons: 18, alzheimers: 22, dysarthria: 14, postStroke: 10 },
-    { month: 'Jul', parkinsons: 17, alzheimers: 20, dysarthria: 13, postStroke: 10 },
-    { month: 'Aug', parkinsons: 15, alzheimers: 19, dysarthria: 12, postStroke: 9 },
-    { month: 'Sep', parkinsons: 14, alzheimers: 18, dysarthria: 11, postStroke: 9 },
-    { month: 'Oct', parkinsons: 12, alzheimers: 18, dysarthria: 9, postStroke: 8 },
-  ]
-
-  const shapFeatureData = [
-    { feature: 'Pitch Jitter', value: 84, baseline: 30 },
-    { feature: 'Shimmer APQ', value: 68, baseline: 35 },
-    { feature: 'F0 Entropy', value: 42, baseline: 40 },
-    { feature: 'HNR Ratio', value: 91, baseline: 45 },
-    { feature: 'MFCC-4 Slope', value: 72, baseline: 50 },
-    { feature: 'Pause Ratio', value: 55, baseline: 35 },
-  ]
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] text-white flex flex-col">
-      {/* Top Navigation */}
-      <header className="h-16 px-6 border-b border-[#1F2937] bg-[#0E1526] flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Logo size="sm" />
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0A0F1E] border border-[#1F2937] text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-gray-300 font-mono">OPD 4 - Tele-Neurology Cell, Jabalpur Medical College</span>
+    <div className="space-y-8">
+      {/* GREETING HEADER */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-[#1F2937]/70">
+        <div>
+          <h1 className="font-display font-extrabold text-3xl sm:text-4xl tracking-tight text-white flex items-center gap-2">
+            <span>Good morning, Shivam</span>
+            <span className="text-3xl">👋</span>
+          </h1>
+          <p className="text-sm text-gray-400 mt-1 flex items-center gap-2 font-mono">
+            <span>Last screening: 3 days ago</span>
+            <span>·</span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <CheckCircle2 size={13} />
+              Risk status: Low
+            </span>
+          </p>
+        </div>
+
+        <Link
+          href="/dashboard/scan"
+          className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl font-display font-bold text-sm text-white transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_0_35px_rgba(99,102,241,0.45)]"
+          style={{
+            background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+          }}
+        >
+          <Mic size={18} className="animate-pulse" />
+          <span>+ New Screening</span>
+        </Link>
+      </div>
+
+      {/* ROW 1: BENTO METRIC CARDS (4 cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Card 1: Total Screenings */}
+        <div className="p-6 rounded-2xl bg-[#111827] border border-[#1F2937] shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-2">
+            <span>Total Screenings</span>
+            <Activity size={15} className="text-[#6366F1]" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="font-display font-extrabold text-3xl text-white">34</span>
+            <span className="text-[11px] font-mono text-emerald-400 font-semibold">+4 this month</span>
+          </div>
+          {/* Sparkline mini preview */}
+          <div className="h-10 w-full mt-3">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sparklineData}>
+                <Area type="monotone" dataKey="v" stroke="#6366F1" fill="#6366F1" fillOpacity={0.2} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative hidden sm:block">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search patient UHID..."
-              className="pl-8 pr-3 py-1.5 rounded-lg bg-[#111827] border border-[#1F2937] text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#6366F1]"
-            />
+        {/* Card 2: Current Risk Level */}
+        <div className="p-6 rounded-2xl bg-[#111827] border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.06)] flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-2">
+            <span>Current Risk Level</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+          </div>
+          <div>
+            <span className="font-display font-extrabold text-3xl text-emerald-400">LOW</span>
+            <p className="text-xs text-gray-400 mt-1">12/100 aggregate score</p>
+          </div>
+          {/* Gauge bar */}
+          <div className="w-full bg-[#1F2937] h-2 rounded-full overflow-hidden mt-3">
+            <div className="bg-emerald-400 h-full rounded-full" style={{ width: '12%' }} />
+          </div>
+        </div>
+
+        {/* Card 3: Streak */}
+        <div className="p-6 rounded-2xl bg-[#111827] border border-[#1F2937] shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-2">
+            <span>Monitoring Streak</span>
+            <Flame size={15} className="text-[#F59E0B]" />
+          </div>
+          <div>
+            <span className="font-display font-extrabold text-3xl text-white">4 Mo</span>
+            <p className="text-xs text-gray-400 mt-1">3 days since last session</p>
+          </div>
+          {/* Calendar dots */}
+          <div className="flex items-center gap-1.5 mt-3">
+            {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+              <span
+                key={d}
+                className={`w-3.5 h-3.5 rounded-md ${
+                  d <= 5 ? 'bg-indigo-500' : 'bg-[#1F2937]'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Card 4: Disorders Tracked */}
+        <div className="p-6 rounded-2xl bg-[#111827] border border-[#1F2937] shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-2">
+            <span>Disorders Tracked</span>
+            <span className="font-bold text-cyan-400">4 of 4</span>
+          </div>
+          <div className="space-y-1.5 mt-1 text-[11px] font-mono">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">PD</span>
+              <span className="text-emerald-400">12%</span>
+            </div>
+            <div className="w-full bg-[#1F2937] h-1 rounded-full overflow-hidden">
+              <div className="bg-[#6366F1] h-full" style={{ width: '12%' }} />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">AD</span>
+              <span className="text-indigo-400">18%</span>
+            </div>
+            <div className="w-full bg-[#1F2937] h-1 rounded-full overflow-hidden">
+              <div className="bg-[#8B5CF6] h-full" style={{ width: '18%' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ROW 2: RISK TREND CHART (Large, Full Width) */}
+      <div className="p-6 sm:p-8 rounded-2xl bg-[#111827] border border-[#1F2937] shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 className="font-display font-bold text-lg text-white">
+              Multi-Disorder Longitudinal Risk Trajectory
+            </h3>
+            <p className="text-xs text-gray-400">
+              Simultaneous acoustic risk tracks over clinical testing intervals
+            </p>
           </div>
 
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg bg-[#111827] border border-[#1F2937] text-gray-400 hover:text-white"
-            aria-label="Toggle theme"
+          {/* Time Filter Pills */}
+          <div className="flex items-center p-1 rounded-xl bg-[#0A0F1E] border border-[#1F2937] text-xs font-mono">
+            {(['7D', '1M', '3M', '6M', '1Y'] as const).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setTimeFilter(filter)}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  timeFilter === filter
+                    ? 'bg-[#6366F1] text-white font-bold shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 4-Line Chart */}
+        <div className="h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <XAxis dataKey="label" stroke="#4B5563" fontSize={11} />
+              <YAxis stroke="#4B5563" fontSize={11} domain={[0, 40]} />
+              <Tooltip
+                contentStyle={{
+                  background: '#0F172A',
+                  borderColor: '#1E293B',
+                  borderRadius: '10px',
+                  fontSize: '12px',
+                }}
+              />
+              <Line type="monotone" dataKey="pd" stroke="#6366F1" strokeWidth={2.5} dot={{ r: 4 }} name="Parkinson's (PD)" />
+              <Line type="monotone" dataKey="ad" stroke="#8B5CF6" strokeWidth={2.5} dot={{ r: 4 }} name="Alzheimer's (AD)" />
+              <Line type="monotone" dataKey="dysarthria" stroke="#22D3EE" strokeWidth={2.5} dot={{ r: 4 }} name="Dysarthria" />
+              <Line type="monotone" dataKey="postStroke" stroke="#14B8A6" strokeWidth={2.5} dot={{ r: 4 }} name="Post-Stroke Recovery" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Chart Legend */}
+        <div className="flex flex-wrap items-center justify-center gap-6 mt-4 pt-4 border-t border-[#1F2937] text-xs font-mono text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#6366F1]" />
+            <span>Parkinson's (Indigo)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#8B5CF6]" />
+            <span>Alzheimer's (Purple)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#22D3EE]" />
+            <span>Dysarthria (Cyan)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#14B8A6]" />
+            <span>Post-Stroke (Teal)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ROW 3: TWO COLUMNS (Left 60% Reports, Right 40% Appointments) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left Column (3/5 = 60%): Recent Reports */}
+        <div className="lg:col-span-3 p-6 sm:p-7 rounded-2xl bg-[#111827] border border-[#1F2937] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-display font-bold text-lg text-white">Recent Screening Reports</h3>
+                <p className="text-xs text-gray-400">Latest automated voice biomarker evaluations</p>
+              </div>
+              <Link href="/dashboard/history" className="text-xs font-semibold text-cyan-400 hover:text-cyan-300">
+                See All →
+              </Link>
+            </div>
+
+            <div className="divide-y divide-[#1F2937]">
+              {recentReports.map((rep) => (
+                <div key={rep.id} className="py-3.5 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-semibold text-white">{rep.date}</div>
+                    <div className="text-xs text-gray-400 font-mono mt-0.5">{rep.flags}</div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold"
+                      style={{ color: rep.riskColor, background: rep.bgRisk }}
+                    >
+                      {rep.risk}
+                    </span>
+                    <Link
+                      href="/dashboard/history"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      title="View Report"
+                    >
+                      <Eye size={16} />
+                    </Link>
+                    <button
+                      onClick={downloadSamplePDF}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-cyan-400 hover:bg-white/5 transition-colors"
+                      title="Download PDF"
+                    >
+                      <Download size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (2/5 = 40%): Upcoming Appointments */}
+        <div className="lg:col-span-2 p-6 sm:p-7 rounded-2xl bg-[#111827] border border-[#1F2937] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-display font-bold text-lg text-white">Upcoming Appointments</h3>
+                <p className="text-xs text-gray-400">Specialist consultations & follow-ups</p>
+              </div>
+              <Calendar size={18} className="text-indigo-400" />
+            </div>
+
+            <div className="space-y-3.5 mb-6">
+              {upcomingAppointments.map((apt) => (
+                <div key={apt.id} className="p-4 rounded-xl bg-[#0A0F1E] border border-[#1F2937]">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <h4 className="font-semibold text-sm text-white">{apt.doctor}</h4>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300">
+                      {apt.mode}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">{apt.specialty}</p>
+                  <p className="text-xs text-gray-500">{apt.hospital}</p>
+                  <div className="mt-2 text-xs font-mono text-cyan-400 flex items-center gap-1.5">
+                    <Clock size={12} />
+                    <span>{apt.time}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Link
+            href="/dashboard/appointments"
+            className="w-full py-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
           >
-            <Sparkles size={16} />
-          </button>
-
-          <button className="p-2 rounded-lg bg-[#111827] border border-[#1F2937] text-gray-400 hover:text-white relative">
-            <Bell size={16} />
-            <span className="w-2 h-2 rounded-full bg-cyan-400 absolute top-1.5 right-1.5" />
-          </button>
-
-          <div className="flex items-center gap-2 pl-3 border-l border-[#1F2937]">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white">
-              DR
-            </div>
-            <div className="hidden sm:block text-left text-xs">
-              <div className="font-semibold text-white">Dr. Priya Sharma</div>
-              <div className="text-[10px] text-gray-400 font-mono">Assoc. Neurologist</div>
-            </div>
-          </div>
+            <span>+ Book New Appointment</span>
+          </Link>
         </div>
-      </header>
+      </div>
 
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col md:flex-row">
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 border-r border-[#1F2937] bg-[#0E1526] p-4 flex flex-col justify-between">
-          <div className="space-y-6">
-            <div className="space-y-1">
-              {[
-                { id: 'overview', label: 'Screening Dashboard', icon: Activity },
-                { id: 'screening', label: 'Live Voice Test', icon: Mic },
-                { id: 'patients', label: 'Patient Directory', icon: User },
-                { id: 'reports', label: 'Clinical PDF Reports', icon: FileText },
-              ].map((item) => {
-                const Icon = item.icon
-                const isActive = activeTab === item.id
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id as any)}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                      isActive
-                        ? 'bg-[#6366F1] text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]'
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <Icon size={16} />
-                    <span>{item.label}</span>
-                  </button>
-                )
-              })}
-            </div>
+      {/* ROW 4: DOCTOR RECOMMENDATION */}
+      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-indigo-950/30 to-purple-950/20 border border-indigo-500/25">
+        <div className="flex items-center gap-2 text-xs font-mono text-indigo-400 font-semibold uppercase tracking-wider mb-2">
+          <Sparkles size={14} />
+          <span>Clinical Recommendation Based on Last Screening</span>
+        </div>
+        <h3 className="font-display font-bold text-xl text-white mb-2">
+          Specialist Consultations Near You
+        </h3>
+        <p className="text-xs text-gray-400 mb-6 max-w-xl">
+          Based on your latest acoustic profile, maintain proactive checkups with verified neurologists at Jabalpur Medical College.
+        </p>
 
-            {/* Quick Action Start Screening */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-cyan-500/15 border border-indigo-500/30 text-left">
-              <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1">
-                <Mic size={14} />
-                <span>Quick Voice Scan</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {recommendedDoctors.map((doc) => (
+            <div key={doc.name} className="p-5 rounded-xl bg-[#111827] border border-[#1F2937] flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h4 className="font-display font-bold text-base text-white">{doc.name}</h4>
+                  <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                    {doc.distance}
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-300 font-medium">{doc.specialty}</p>
+                <p className="text-xs text-gray-400 mt-1">{doc.hospital}, {doc.city}</p>
+                <p className="text-[11px] font-mono text-gray-500 mt-1">Languages: {doc.languages}</p>
               </div>
-              <p className="text-[11px] text-gray-400 mb-3 leading-relaxed">
-                Record 30-second patient voice for immediate 4-condition risk profile.
-              </p>
+
               <Link
-                href="/onboarding"
-                className="w-full py-2 px-3 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                href="/dashboard/appointments"
+                className="mt-4 inline-flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-semibold transition-colors"
               >
-                <span>Launch Scanner</span>
-                <ArrowUpRight size={13} />
+                <span>Book Appointment →</span>
               </Link>
             </div>
-          </div>
-
-          <div className="pt-4 border-t border-[#1F2937] text-[11px] font-mono text-gray-500">
-            <div>JMC Portal v2.4</div>
-            <div className="text-gray-400">Jabalpur Medical College</div>
-          </div>
-        </aside>
-
-        {/* Content Body */}
-        <main className="flex-1 p-6 sm:p-8 overflow-y-auto">
-          {/* Top Status Bar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-            <div>
-              <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest block mb-1">
-                PATIENT RECORD · UHID #JMC-2026-8812
-              </span>
-              <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-white">
-                Rameshwar Patel, 64 yrs (M)
-              </h1>
-              <p className="text-xs text-gray-400 mt-1">
-                Last Screened: 31 Oct 2026 · Referral Source: ASHA Sehora Camp, Jabalpur Rural
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => alert('Exporting signed PDF report to EMR...')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#111827] border border-[#1F2937] text-white hover:bg-[#1F2937] transition-all"
-              >
-                <Download size={14} />
-                <span>Export Clinical PDF</span>
-              </button>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#6366F1] hover:bg-[#4F46E5] text-white transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)]"
-              >
-                <span>Return to Home</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* 4 Risk Status Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {/* Parkinson's Card */}
-            <div className="p-5 rounded-2xl bg-[#111827] border border-emerald-500/30 shadow-[0_0_25px_rgba(16,185,129,0.06)]">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-400">Parkinson's Risk</span>
-                <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  LOW (12%)
-                </span>
-              </div>
-              <div className="text-2xl font-display font-extrabold text-white mb-2">12 / 100</div>
-              <div className="w-full bg-[#1F2937] h-1.5 rounded-full overflow-hidden mb-3">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: '12%' }} />
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <TrendingDown size={13} className="text-emerald-400" />
-                <span>-3% improvement vs last month</span>
-              </div>
-            </div>
-
-            {/* Alzheimer's Card */}
-            <div className="p-5 rounded-2xl bg-[#111827] border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.06)]">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-400">Alzheimer's Score</span>
-                <span className="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                  LOW (18%)
-                </span>
-              </div>
-              <div className="text-2xl font-display font-extrabold text-white mb-2">18 / 100</div>
-              <div className="w-full bg-[#1F2937] h-1.5 rounded-full overflow-hidden mb-3">
-                <div className="bg-indigo-400 h-full rounded-full" style={{ width: '18%' }} />
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <CheckCircle2 size={13} className="text-indigo-400" />
-                <span>Stable linguistic pause ratio</span>
-              </div>
-            </div>
-
-            {/* Dysarthria Card */}
-            <div className="p-5 rounded-2xl bg-[#111827] border border-cyan-500/30 shadow-[0_0_25px_rgba(34,211,238,0.06)]">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-400">Dysarthria Index</span>
-                <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                  OPTIMAL (9%)
-                </span>
-              </div>
-              <div className="text-2xl font-display font-extrabold text-white mb-2">09 / 100</div>
-              <div className="w-full bg-[#1F2937] h-1.5 rounded-full overflow-hidden mb-3">
-                <div className="bg-cyan-400 h-full rounded-full" style={{ width: '9%' }} />
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <CheckCircle2 size={13} className="text-cyan-400" />
-                <span>Sharp phoneme articulation</span>
-              </div>
-            </div>
-
-            {/* Post-Stroke Recovery Card */}
-            <div className="p-5 rounded-2xl bg-[#111827] border border-teal-500/30 shadow-[0_0_25px_rgba(20,184,166,0.06)]">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-400">Post-Stroke Track</span>
-                <span className="text-xs font-mono font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">
-                  RECOVERY NORMAL
-                </span>
-              </div>
-              <div className="text-2xl font-display font-extrabold text-white mb-2">08 / 100</div>
-              <div className="w-full bg-[#1F2937] h-1.5 rounded-full overflow-hidden mb-3">
-                <div className="bg-teal-400 h-full rounded-full" style={{ width: '8%' }} />
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <TrendingDown size={13} className="text-teal-400" />
-                <span>Zero cognitive regression</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Diagnostic Charts */}
-          <DashboardCharts />
-
-          {/* Clinical Doctor Referral Advisory */}
-          <div className="p-6 rounded-2xl bg-[#111827] border border-[#1F2937] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                <CheckCircle2 size={16} />
-                <span>Screening Verdict: Low Neurological Risk Identified</span>
-              </div>
-              <h4 className="font-display font-bold text-white text-lg">
-                No immediate tertiary neurological referral required.
-              </h4>
-              <p className="text-xs text-gray-400 max-w-2xl leading-relaxed">
-                Biomarker perturbation is within 1.2 standard deviations of healthy normative controls.
-                Recommend routine 6-month follow-up at the Sehora ASHA health post or local PHC.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <button
-                onClick={() => alert('Referral registered to Jabalpur Medical College OPD schedule.')}
-                className="w-full md:w-auto px-5 py-3 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-semibold whitespace-nowrap shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-colors"
-              >
-                Log In Hospital EMR
-              </button>
-            </div>
-          </div>
-        </main>
+          ))}
+        </div>
       </div>
     </div>
   )
