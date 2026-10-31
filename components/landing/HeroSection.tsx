@@ -7,6 +7,7 @@ import { motion, useInView } from 'framer-motion'
 import { Play, ChevronDown, Brain, ArrowRight, Sparkles } from 'lucide-react'
 import { VideoModal } from './VideoModal'
 import { useTheme } from '@/components/ThemeProvider'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Dynamically import Three.js particle canvas to prevent SSR hydration mismatches
 const ParticleBrain = dynamic(() => import('./ParticleBrain'), {
@@ -81,15 +82,39 @@ export function HeroSection() {
       {/* 3D Particle Scene / Mobile Fallback */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-85">
         {!isMobile ? (
-          <Suspense
+          <ErrorBoundary
             fallback={
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-48 h-48 rounded-full border border-indigo-500/20 animate-pulse" />
+              <div className="w-full h-full flex items-center justify-center relative">
+                <div className="absolute w-[360px] h-[360px] rounded-full bg-gradient-to-tr from-indigo-500/15 to-cyan-500/15 blur-3xl" />
+                <svg
+                  width="320"
+                  height="320"
+                  viewBox="0 0 100 100"
+                  className="animate-pulse opacity-75"
+                  fill="none"
+                >
+                  <circle cx="50" cy="50" r="42" stroke="#6366F1" strokeWidth="0.8" strokeDasharray="2 3" opacity="0.6" />
+                  <path
+                    d="M50 20C34 20 25 32 25 48C25 64 36 78 50 78C64 78 75 64 75 48C75 32 66 20 50 20Z"
+                    stroke="#22D3EE"
+                    strokeWidth="1.2"
+                    opacity="0.8"
+                  />
+                  <path d="M32 48 H68 M50 28 V68" stroke="#6366F1" strokeWidth="0.8" opacity="0.5" />
+                </svg>
               </div>
             }
           >
-            <ParticleBrain />
-          </Suspense>
+            <Suspense
+              fallback={
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-48 h-48 rounded-full border border-indigo-500/20 animate-pulse" />
+                </div>
+              }
+            >
+              <ParticleBrain />
+            </Suspense>
+          </ErrorBoundary>
         ) : (
           /* High-quality responsive mobile fallback graphic */
           <div className="w-full h-full flex items-center justify-center relative">

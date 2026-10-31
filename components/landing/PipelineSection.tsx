@@ -146,19 +146,31 @@ export function PipelineSection() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const ctx = gsap.context(() => {
-      stages.forEach((_, index) => {
-        ScrollTrigger.create({
-          trigger: `#stage-${index}`,
-          start: 'top center+=100',
-          end: 'bottom center+=100',
-          onEnter: () => setActiveStage(index),
-          onEnterBack: () => setActiveStage(index),
+    let ctx: any = null
+    try {
+      ctx = gsap.context(() => {
+        stages.forEach((_, index) => {
+          const el = document.getElementById(`stage-${index}`)
+          if (el) {
+            ScrollTrigger.create({
+              trigger: el,
+              start: 'top center+=100',
+              end: 'bottom center+=100',
+              onEnter: () => setActiveStage(index),
+              onEnterBack: () => setActiveStage(index),
+            })
+          }
         })
-      })
-    }, containerRef)
+      }, containerRef)
+    } catch (e) {
+      console.warn('ScrollTrigger initialization fallback:', e)
+    }
 
-    return () => ctx.revert()
+    return () => {
+      try {
+        ctx?.revert?.()
+      } catch {}
+    }
   }, [])
 
   return (

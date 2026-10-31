@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
-    "@react-three/drei": "^10.7.9",
-    "@react-three/fiber": "^9.8.2",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "cmdk": "^1.1.1",
     "firebase": "^13.1.0",
     "framer-motion": "^14.9.0",
@@ -23,7 +23,7 @@
     "react-dom": "^18",
     "react-is": "^18.3.1",
     "recharts": "^3.10.1",
-    "three": "^0.187.0"
+    "three": "^0.160.1"
   },
   "devDependencies": {
     "@types/node": "^20",
