@@ -17,8 +17,7 @@ import {
   Users,
   HeartPulse,
 } from 'lucide-react'
-import { auth } from '@/lib/firebase'
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'
+import { subscribeToAuth, UserSession } from '@/lib/auth'
 import dynamic from 'next/dynamic'
 
 const LineChart = dynamic(() => import('recharts').then((mod) => mod.LineChart), { ssr: false })
@@ -29,41 +28,29 @@ const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { s
 const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false })
 
 export default function DashboardHomePage() {
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null)
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null)
   const [screenings, setScreenings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = subscribeToAuth((user) => {
       setCurrentUser(user)
-      if (user) {
-        // Fetch user's real screenings
-        fetch(`/api/reports/user/${user.uid}`)
-          .then((res) => (res.ok ? res.json() : []))
-          .then((data) => {
-            setScreenings(Array.isArray(data) ? data : [])
-            setLoading(false)
-          })
-          .catch(() => {
-            // Check local storage fallback for offline demo
-            const local = localStorage.getItem(`neurovoice_screenings_${user.uid}`)
-            if (local) {
-              try {
-                setScreenings(JSON.parse(local))
-              } catch {}
-            }
-            setLoading(false)
-          })
-      } else {
-        // Guest/default user
-        fetch('/api/reports/user/default_user')
-          .then((res) => (res.ok ? res.json() : []))
-          .then((data) => {
-            setScreenings(Array.isArray(data) ? data : [])
-            setLoading(false)
-          })
-          .catch(() => setLoading(false))
-      }
+      const targetUid = user?.uid || 'default_user'
+      fetch(`/api/reports/user/${targetUid}`)
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data) => {
+          setScreenings(Array.isArray(data) ? data : [])
+          setLoading(false)
+        })
+        .catch(() => {
+          const local = localStorage.getItem(`neurovoice_screenings_${targetUid}`)
+          if (local) {
+            try {
+              setScreenings(JSON.parse(local))
+            } catch {}
+          }
+          setLoading(false)
+        })
     })
     return () => unsub()
   }, [])

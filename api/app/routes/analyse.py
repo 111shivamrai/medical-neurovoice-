@@ -20,6 +20,8 @@ async def analyse_voice_recording(
     language: str = Form("hi"),
     user_id: Optional[str] = Form("default_user"),
     userId: Optional[str] = Form(None),
+    userName: Optional[str] = Form(None),
+    user_name: Optional[str] = Form(None),
     age: int = Form(45),
     gender: str = Form("unspecified"),
     prompt_type: str = Form("sustained_vowel"),
@@ -88,9 +90,12 @@ async def analyse_voice_recording(
         verdict = "Elevated Acoustic Biomarker Perturbation"
         rec = f"Prioritized clinical consultation advised: {results['recommended_specialist']}."
 
+    effective_name = userName or user_name or "Participant"
+
     record = {
         "id": screening_id,
         "userId": effective_uid,
+        "userName": effective_name,
         "timestamp": now_iso,
         "language": language,
         "duration": results["quality"]["duration"],

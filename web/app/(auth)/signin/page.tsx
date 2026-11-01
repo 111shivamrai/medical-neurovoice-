@@ -7,6 +7,7 @@ import { Eye, EyeOff, Mail, Lock, Loader2, ArrowRight, ShieldCheck, AlertCircle 
 import { Logo } from '@/components/Logo'
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
 import { auth, googleProvider } from '@/lib/firebase'
+import { setLocalUser, isDemoMode } from '@/lib/auth'
 
 function SignInContent() {
   const router = useRouter()
@@ -31,24 +32,68 @@ function SignInContent() {
     setError(null)
 
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password)
-      router.replace(nextRoute)
-    } catch (err: any) {
-      console.warn('Firebase sign-in error:', err?.code || err?.message)
-      let msg = 'Incorrect email or password. Please verify your credentials.'
-      if (err?.code === 'auth/user-not-found') {
-        msg = 'No clinical account found matching this email address.'
-      } else if (err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
-        msg = 'Invalid credentials. Please re-enter your password.'
-      } else if (err?.code === 'auth/too-many-requests') {
-        msg = 'Account temporarily locked due to multiple failed attempts. Try again later.'
-      } else if (err?.code === 'auth/network-request-failed') {
-        msg = 'Network connection failed. Please check your internet connectivity.'
+      try {
+        const userCred = await signInWithEmailAndPassword(auth, email.trim(), password)
+        const user = userCred.user
+        setLocalUser({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || email.split('@')[0],
+          photoURL: user.photoURL,
+          isDemo: false,
+        })
+        router.replace(nextRoute)
+        return
+      } catch (fbErr: any) {
+        console.warn('Firebase sign-in note:', fbErr?.code || fbErr?.message)
+        // If API key is not valid, missing, or offline, activate Demo User session!
+        if (
+          fbErr?.code === 'auth/api-key-not-valid' ||
+          fbErr?.code === 'auth/invalid-api-key' ||
+          fbErr?.message?.includes('api-key-not-valid') ||
+          fbErr?.message?.includes('API key') ||
+          isDemoMode()
+        ) {
+          const pseudoUid = `usr-${Math.abs(email.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`
+          const localSaved = localStorage.getItem(`neurovoice_user_${pseudoUid}`)
+          const parsed = localSaved ? JSON.parse(localSaved) : null
+          const displayName = parsed?.fullName || email.split('@')[0]
+
+          setLocalUser({
+            uid: pseudoUid,
+            email: email.trim(),
+            displayName,
+            role: parsed?.role || 'patient',
+            isDemo: true,
+          })
+          router.replace(nextRoute)
+          return
+        }
+
+        let msg = 'Incorrect email or password. Please verify your credentials.'
+        if (fbErr?.code === 'auth/user-not-found') {
+          msg = 'No clinical account found matching this email address.'
+        } else if (fbErr?.code === 'auth/wrong-password' || fbErr?.code === 'auth/invalid-credential') {
+          msg = 'Invalid credentials. Please re-enter your password.'
+        } else if (fbErr?.code === 'auth/too-many-requests') {
+          msg = 'Account temporarily locked due to multiple failed attempts. Try again later.'
+        }
+        setError(msg)
       }
-      setError(msg)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDemoSignIn = () => {
+    setLocalUser({
+      uid: 'demo-clinician-01',
+      email: 'demo@neurovoice.org',
+      displayName: 'Clinical Demo User',
+      role: 'patient',
+      isDemo: true,
+    })
+    router.replace(nextRoute)
   }
 
   const handleGoogleSignIn = async () => {
@@ -56,11 +101,24 @@ function SignInContent() {
     setError(null)
 
     try {
-      await signInWithPopup(auth, googleProvider)
+      const cred = await signInWithPopup(auth, googleProvider)
+      setLocalUser({
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: cred.user.displayName,
+        photoURL: cred.user.photoURL,
+        isDemo: false,
+      })
       router.replace(nextRoute)
     } catch (err: any) {
       console.warn('Google sign-in error:', err?.code || err?.message)
-      if (err?.code !== 'auth/popup-closed-by-user') {
+      if (
+        err?.code === 'auth/api-key-not-valid' ||
+        err?.code === 'auth/invalid-api-key' ||
+        isDemoMode()
+      ) {
+        handleDemoSignIn()
+      } else if (err?.code !== 'auth/popup-closed-by-user') {
         setError('Google authentication could not be completed. Please try again.')
       }
     } finally {
@@ -191,6 +249,16 @@ function SignInContent() {
               </svg>
             )}
             <span>Sign in with Google</span>
+          </button>
+
+          {/* Quick Demo Login Option */}
+          <button
+            type="button"
+            onClick={handleDemoSignIn}
+            className="w-full py-2.5 rounded-xl text-xs font-semibold border border-[var(--primary)]/30 text-[var(--primary)] bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <ShieldCheck size={15} />
+            <span>Continue as Demo Account (Instant Access)</span>
           </button>
         </div>
 

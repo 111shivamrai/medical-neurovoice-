@@ -5,13 +5,12 @@ import Link from 'next/link'
 import { Menu, X, Moon, Sun, ArrowRight, LayoutDashboard } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useTheme } from '@/components/ThemeProvider'
-import { auth } from '@/lib/firebase'
-import { onAuthStateChanged, User } from 'firebase/auth'
+import { subscribeToAuth, UserSession } from '@/lib/auth'
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null)
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -22,14 +21,10 @@ export function Navbar() {
   }, [])
 
   useEffect(() => {
-    try {
-      const unsub = onAuthStateChanged(auth, (user) => {
-        setCurrentUser(user)
-      })
-      return () => unsub()
-    } catch {
-      // Firebase auth uninitialized fallback
-    }
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user)
+    })
+    return () => unsub()
   }, [])
 
   const navLinks = [

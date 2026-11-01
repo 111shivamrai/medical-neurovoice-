@@ -23,8 +23,7 @@ import {
   Smile,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { auth } from '@/lib/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+import { subscribeToAuth, UserSession } from '@/lib/auth'
 
 // Dynamically import Recharts to avoid SSR mismatches
 const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false })
@@ -49,18 +48,15 @@ export default function UserProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    try {
-      const unsub = onAuthStateChanged(auth, (user) => {
-        if (user) {
-          if (user.displayName) setName(user.displayName)
-          if (user.email) setEmail(user.email)
-          if (user.photoURL) setPhotoURL(user.photoURL)
-        }
-      })
-      return () => unsub()
-    } catch {
-      // ignore
-    }
+    const unsub = subscribeToAuth((user) => {
+      if (user) {
+        if (user.displayName) setName(user.displayName)
+        if (user.email) setEmail(user.email)
+        if (user.photoURL) setPhotoURL(user.photoURL)
+        if (user.role) setRole(user.role === 'doctor' ? 'Clinician / Neurologist' : user.role === 'chw' ? 'Community Health Worker' : 'Patient / Participant')
+      }
+    })
+    return () => unsub()
   }, [])
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

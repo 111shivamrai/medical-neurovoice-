@@ -9,26 +9,23 @@ import { CommandPalette } from './CommandPalette'
 import { NotificationsDropdown } from './NotificationsDropdown'
 import { Search, Sun, Moon, LogOut, User } from 'lucide-react'
 import { auth } from '@/lib/firebase'
-import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth'
+import { signOut } from 'firebase/auth'
+import { subscribeToAuth, clearLocalUser, UserSession } from '@/lib/auth'
 
 export function DashboardNav() {
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null)
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null)
 
   const isDark = theme === 'dark'
 
   useEffect(() => {
-    try {
-      const unsub = onAuthStateChanged(auth, (user) => {
-        setCurrentUser(user)
-      })
-      return () => unsub()
-    } catch {
-      // ignore
-    }
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user)
+    })
+    return () => unsub()
   }, [])
 
   const handleSignOut = async () => {
@@ -37,11 +34,7 @@ export function DashboardNav() {
     } catch (e) {
       console.warn('Sign out error:', e)
     }
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('neurovoice-auth-token')
-      localStorage.removeItem('neurovoice-role')
-      sessionStorage.clear()
-    }
+    clearLocalUser()
     // Strict redirect to landing page
     router.replace('/')
   }

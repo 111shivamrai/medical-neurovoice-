@@ -26,6 +26,7 @@ import {
   Share2,
 } from 'lucide-react'
 import { BRAND } from '@/lib/brand'
+import { getLocalUser } from '@/lib/auth'
 
 export default function NewScreeningPage() {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
@@ -208,10 +209,15 @@ export default function NewScreeningPage() {
     setStep(4)
     setProgressStage(0)
 
+    const currentUser = getLocalUser()
+    const activeUid = currentUser?.uid || 'user_' + reportId
+    const activeName = currentUser?.displayName || 'Participant'
+
     const formData = new FormData()
     formData.append('audio', recordedBlob, 'screening.wav')
     formData.append('language', language)
-    formData.append('userId', 'user_' + reportId)
+    formData.append('userId', activeUid)
+    formData.append('userName', activeName)
 
     // Progress animation
     const progressInterval = setInterval(() => {
