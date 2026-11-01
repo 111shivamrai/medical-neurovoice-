@@ -2,28 +2,43 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, X, Moon, Sun, ArrowRight } from 'lucide-react'
+import { Menu, X, Moon, Sun, ArrowRight, LayoutDashboard } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useTheme } from '@/components/ThemeProvider'
-import { motion, AnimatePresence } from 'framer-motion'
+import { auth } from '@/lib/firebase'
+import { onAuthStateChanged, User } from 'firebase/auth'
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20)
+    const handleScroll = () => setScrolled(window.scrollY > 15)
     window.addEventListener('scroll', handleScroll, { passive: true })
     handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    try {
+      const unsub = onAuthStateChanged(auth, (user) => {
+        setCurrentUser(user)
+      })
+      return () => unsub()
+    } catch {
+      // Firebase auth uninitialized fallback
+    }
+  }, [])
+
   const navLinks = [
     { label: 'How It Works', href: '#how-it-works' },
     { label: 'Conditions', href: '#conditions' },
-    { label: 'For Doctors', href: '#personas' },
-    { label: 'Research', href: '#research' },
+    { label: 'Pipeline', href: '#pipeline' },
+    { label: 'Honest Science', href: '#trust' },
+    { label: 'Methodology', href: '/about/method' },
+    { label: 'FAQ', href: '#faq' },
   ]
 
   const isDark = theme === 'dark'
@@ -31,59 +46,69 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
           scrolled
-            ? 'bg-[var(--surface)]/85 backdrop-blur-xl border-b border-[var(--border)] shadow-md'
+            ? 'bg-[var(--surface)]/95 backdrop-blur-md border-b border-[var(--border)] shadow-[var(--shadow-sm)]'
             : 'bg-transparent border-b border-transparent'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-18 py-3.5">
             {/* Logo */}
             <Logo size="md" />
 
-            {/* Desktop Nav Links */}
-            <nav className="hidden lg:flex items-center gap-8" aria-label="Desktop Navigation">
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center gap-7" aria-label="Main Navigation">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm font-medium transition-colors duration-200 text-[var(--text-muted)] hover:text-[var(--accent)] rounded-md px-1 py-0.5"
+                  className="text-xs font-semibold tracking-wide transition-colors text-[var(--muted)] hover:text-[var(--primary)]"
                 >
                   {link.label}
                 </Link>
               ))}
             </nav>
 
-            {/* Right CTAs & Theme Toggle */}
-            <div className="hidden lg:flex items-center gap-4">
-              {/* Dark/Light toggle */}
+            {/* Right Controls */}
+            <div className="hidden lg:flex items-center gap-3">
+              {/* Theme Toggle */}
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] hover:border-[var(--primary)]"
                 aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
-                {isDark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-slate-600" />}
+                {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-slate-700" />}
               </button>
 
-              <Link
-                href="/signin"
-                className="px-4 py-2 text-sm font-semibold rounded-lg text-[var(--text)] hover:text-[var(--accent)] transition-colors"
-              >
-                Sign In
-              </Link>
-
-              <Link
-                href="/dashboard/scan"
-                className="btn-primary text-sm font-semibold text-white px-5 py-2.5 rounded-lg shadow-md"
-              >
-                Get Started
-                <ArrowRight size={15} />
-              </Link>
+              {currentUser ? (
+                <Link
+                  href="/dashboard"
+                  className="btn-primary text-xs font-semibold py-2 px-4 rounded-lg flex items-center gap-1.5"
+                >
+                  <LayoutDashboard size={14} />
+                  <span>Go to Dashboard</span>
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/signin"
+                    className="btn-ghost text-xs font-semibold py-2 px-3.5 rounded-lg text-[var(--text)]"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="btn-primary text-xs font-semibold py-2 px-4 rounded-lg"
+                  >
+                    Create account
+                  </Link>
+                </>
+              )}
             </div>
 
-            {/* Mobile Hamburger */}
+            {/* Mobile Controls */}
             <div className="flex items-center gap-2 lg:hidden">
               <button
                 type="button"
@@ -91,60 +116,66 @@ export function Navbar() {
                 className="p-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)]"
                 aria-label="Toggle theme"
               >
-                {isDark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-slate-600" />}
+                {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-slate-700" />}
               </button>
 
               <button
                 type="button"
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="p-2 rounded-lg text-[var(--text)] bg-[var(--surface-2)] border border-[var(--border)]"
-                aria-label="Toggle menu"
+                aria-label="Toggle navigation menu"
               >
-                {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+                {mobileOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Drawer */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-b border-[var(--border)] bg-[var(--surface)] px-4 pt-2 pb-6 space-y-3"
-            >
+        {/* Mobile Dropdown Menu */}
+        {mobileOpen && (
+          <div className="lg:hidden border-b border-[var(--border)] bg-[var(--surface)] px-4 pt-3 pb-6 space-y-3 shadow-lg animate-in slide-in-from-top-2">
+            <nav className="flex flex-col space-y-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2 text-base font-medium text-[var(--text)] hover:text-[var(--accent)] rounded-md"
+                  className="px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] rounded-lg"
                 >
                   {link.label}
                 </Link>
               ))}
-
-              <div className="pt-4 border-t border-[var(--border)] flex flex-col gap-2.5">
+            </nav>
+            <div className="pt-3 border-t border-[var(--border)] flex flex-col gap-2">
+              {currentUser ? (
                 <Link
-                  href="/signin"
+                  href="/dashboard"
                   onClick={() => setMobileOpen(false)}
-                  className="w-full text-center py-2.5 text-sm font-semibold rounded-lg border border-[var(--border)] text-[var(--text)]"
+                  className="btn-primary w-full text-center text-sm py-2.5 justify-center"
                 >
-                  Sign In
+                  Go to Dashboard
                 </Link>
-                <Link
-                  href="/dashboard/scan"
-                  onClick={() => setMobileOpen(false)}
-                  className="btn-primary w-full justify-center text-center py-3 text-sm font-semibold text-white rounded-lg"
-                >
-                  Get Started
-                </Link>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              ) : (
+                <>
+                  <Link
+                    href="/signin"
+                    onClick={() => setMobileOpen(false)}
+                    className="btn-ghost w-full text-center text-sm py-2.5 justify-center"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    onClick={() => setMobileOpen(false)}
+                    className="btn-primary w-full text-center text-sm py-2.5 justify-center"
+                  >
+                    Create account
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </header>
     </>
   )

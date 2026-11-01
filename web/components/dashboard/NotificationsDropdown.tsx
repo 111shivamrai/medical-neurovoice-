@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Bell, CheckCheck, FileText, Calendar, Clock, BookOpen, X } from 'lucide-react'
-import { useTheme } from '@/components/ThemeProvider'
 
 interface NotificationItem {
   id: string
@@ -18,45 +17,34 @@ interface NotificationItem {
 export function NotificationsDropdown() {
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
       id: 'notif-1',
       title: 'Screening Completed',
-      message: 'Your screening results are ready. Risk status: Low.',
+      message: 'Your vocal biomarker screening was computed. Results are available.',
       type: 'results',
-      time: '10m ago',
+      time: '15m ago',
       link: '/dashboard/history',
       read: false,
     },
     {
       id: 'notif-2',
-      title: 'Appointment Reminder',
-      message: 'Consultation with Dr. V. K. Soni tomorrow at 10:30 AM.',
+      title: 'Consultation Request Sent',
+      message: 'Your specialist appointment request is registered. Awaiting clinic confirmation.',
       type: 'appointment',
-      time: '2h ago',
-      link: '/dashboard/appointments',
+      time: '3h ago',
+      link: '/dashboard/care',
       read: false,
     },
     {
       id: 'notif-3',
-      title: 'Monthly Wellness Check',
-      message: "It's been 30 days since your last voice screening.",
+      title: 'Acoustic Baseline Reminder',
+      message: 'Recommended periodic vocal wellness check: 30 days since last evaluation.',
       type: 'reminder',
       time: '1d ago',
       link: '/dashboard/scan',
       read: false,
-    },
-    {
-      id: 'notif-4',
-      title: 'Clinical Publication',
-      message: 'New research report published: Acoustic Biomarkers in Central India.',
-      type: 'research',
-      time: '3d ago',
-      link: '/#research',
-      read: true,
     },
   ])
 
@@ -79,15 +67,13 @@ export function NotificationsDropdown() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'results':
-        return <FileText size={15} className="text-[#22D3EE]" />
+        return <FileText size={15} className="text-[var(--accent)]" />
       case 'appointment':
-        return <Calendar size={15} className="text-[#6366F1]" />
+        return <Calendar size={15} className="text-[var(--primary)]" />
       case 'reminder':
-        return <Clock size={15} className="text-[#F59E0B]" />
-      case 'research':
-        return <BookOpen size={15} className="text-[#10B981]" />
+        return <Clock size={15} className="text-[var(--warning)]" />
       default:
-        return <Bell size={15} className="text-gray-400" />
+        return <Bell size={15} className="text-[var(--muted)]" />
     }
   }
 
@@ -95,48 +81,33 @@ export function NotificationsDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="p-2.5 rounded-xl border transition-all hover:scale-105 active:scale-95 relative"
-        style={{
-          background: isDark ? '#111827' : '#FFFFFF',
-          borderColor: isDark ? '#1F2937' : '#E2E8F0',
-          color: isDark ? '#F9FAFB' : '#0F172A',
-        }}
+        className="w-9 h-9 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] flex items-center justify-center transition-colors relative hover:border-[var(--primary)]"
         aria-label="Notifications"
       >
-        <Bell size={18} />
+        <Bell size={17} />
+        {/* CSS-Only 8px Red Dot positioned top-right of bell icon with pulse animation */}
         {unreadCount > 0 && (
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500 absolute top-2 right-2 ring-2 ring-[#0A0F1E] animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-[var(--danger)] absolute top-2 right-2 animate-pulse" />
         )}
       </button>
 
       {open && (
-        <div
-          className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border shadow-2xl z-50 overflow-hidden"
-          style={{
-            background: isDark ? '#111827' : '#FFFFFF',
-            borderColor: isDark ? '#1F2937' : '#E2E8F0',
-          }}
-        >
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-md)] z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
           {/* Header */}
-          <div
-            className="flex items-center justify-between p-4 border-b"
-            style={{ borderColor: isDark ? '#1F2937' : '#F1F5F9' }}
-          >
+          <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
             <div className="flex items-center gap-2">
-              <h3 className="font-display font-bold text-sm" style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}>
-                Notifications
-              </h3>
+              <span className="font-display font-bold text-sm text-[var(--text)]">Notifications</span>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/30">
-                  {unreadCount} NEW
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                  {unreadCount} unread
                 </span>
               )}
             </div>
-
             {unreadCount > 0 && (
               <button
+                type="button"
                 onClick={markAllAsRead}
-                className="text-[11px] font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                className="text-xs text-[var(--primary)] hover:underline flex items-center gap-1 font-medium"
               >
                 <CheckCheck size={13} />
                 <span>Mark all read</span>
@@ -145,41 +116,35 @@ export function NotificationsDropdown() {
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto divide-y" style={{ borderColor: isDark ? '#1F2937' : '#F1F5F9' }}>
-            {notifications.map((n) => (
+          <div className="max-h-80 overflow-y-auto divide-y divide-[var(--border)]">
+            {notifications.map((item) => (
               <Link
-                key={n.id}
-                href={n.link}
+                key={item.id}
+                href={item.link}
                 onClick={() => {
-                  setOpen(false)
                   setNotifications((prev) =>
-                    prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
+                    prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
                   )
+                  setOpen(false)
                 }}
                 className={`p-4 flex items-start gap-3 transition-colors block ${
-                  !n.read
-                    ? isDark
-                      ? 'bg-indigo-500/5 hover:bg-indigo-500/10'
-                      : 'bg-indigo-50/60 hover:bg-indigo-50'
-                    : 'hover:bg-white/5'
+                  !item.read ? 'bg-[var(--surface-2)]/60' : 'hover:bg-[var(--surface-2)]/30'
                 }`}
               >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: isDark ? '#0A0F1E' : '#F8FAFC' }}
-                >
-                  {getIcon(n.type)}
+                <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0">
+                  {getIcon(item.type)}
                 </div>
-
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span className="text-xs font-semibold" style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}>
-                      {n.title}
+                    <span className="text-xs font-semibold text-[var(--text)] truncate">
+                      {item.title}
                     </span>
-                    <span className="text-[10px] font-mono text-gray-500">{n.time}</span>
+                    <span className="text-[10px] font-mono text-[var(--muted)] shrink-0">
+                      {item.time}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-400 leading-snug line-clamp-2">
-                    {n.message}
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    {item.message}
                   </p>
                 </div>
               </Link>
@@ -187,11 +152,14 @@ export function NotificationsDropdown() {
           </div>
 
           {/* Footer */}
-          <div
-            className="p-3 text-center border-t text-[11px] font-mono text-gray-500"
-            style={{ borderColor: isDark ? '#1F2937' : '#F1F5F9' }}
-          >
-            Jabalpur Medical College Alert Dispatch
+          <div className="p-2.5 border-t border-[var(--border)] bg-[var(--surface-2)]/40 text-center text-xs">
+            <Link
+              href="/dashboard/history"
+              onClick={() => setOpen(false)}
+              className="text-xs font-semibold text-[var(--primary)] hover:underline"
+            >
+              View Screening History →
+            </Link>
           </div>
         </div>
       )}

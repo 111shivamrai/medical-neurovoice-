@@ -1,75 +1,124 @@
+'use client'
+
+import React from 'react'
 import Link from 'next/link'
 
 interface LogoProps {
-  className?: string
+  concept?: 'A' | 'B' | 'C'
   size?: 'sm' | 'md' | 'lg'
+  showWordmark?: boolean
+  className?: string
+  href?: string
 }
 
-export function Logo({ className = '', size = 'md' }: LogoProps) {
-  const svgSize = size === 'sm' ? 32 : size === 'lg' ? 56 : 40
-  const textClass = size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-3xl' : 'text-xl'
+export function Logo({
+  concept = 'A',
+  size = 'md',
+  showWordmark = true,
+  className = '',
+  href = '/',
+}: LogoProps) {
+  // Dimensions
+  const dim = {
+    sm: { icon: 24, text: 'text-base', spacing: 'gap-2' },
+    md: { icon: 32, text: 'text-xl', spacing: 'gap-2.5' },
+    lg: { icon: 44, text: 'text-2xl', spacing: 'gap-3.5' },
+  }[size]
 
-  return (
-    <Link href="/" className={`flex items-center gap-3 ${className}`} aria-label="NeuroVoice Home">
+  // Render Mark based on concept
+  const renderMark = () => {
+    if (concept === 'B') {
+      // Concept B: "NV" Lettermark with soundwave crossing
+      return (
+        <svg
+          width={dim.icon}
+          height={dim.icon}
+          viewBox="0 0 32 32"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="shrink-0"
+        >
+          <rect width="32" height="32" rx="8" fill="var(--surface-2)" stroke="var(--border)" strokeWidth="1.5" />
+          <path d="M8 22V10L14 18V10" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M17 10L21 22L25 10" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M6 16H26" stroke="var(--primary)" strokeWidth="1.5" strokeDasharray="1.5 2" opacity="0.6" />
+        </svg>
+      )
+    }
+
+    if (concept === 'C') {
+      // Concept C: Minimalist brain outline + right audio bars
+      return (
+        <svg
+          width={dim.icon}
+          height={dim.icon}
+          viewBox="0 0 32 32"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="shrink-0"
+        >
+          <rect width="32" height="32" rx="8" fill="var(--surface-2)" stroke="var(--border)" strokeWidth="1.5" />
+          <path
+            d="M16 6C12 6 9 9 9 13C9 15.5 10.5 17.5 12 18.5V23C12 24.5 13.5 26 16 26"
+            stroke="var(--primary)"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <path d="M19 11V21" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M22 8V24" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M25 13V19" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      )
+    }
+
+    // Concept A (Default): Waveform that resolves into a neuron node
+    return (
       <svg
-        width={svgSize}
-        height={svgSize}
-        viewBox="0 0 40 40"
+        width={dim.icon}
+        height={dim.icon}
+        viewBox="0 0 32 32"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
+        className="shrink-0 transition-transform hover:scale-105"
       >
-        {/* Brain left half */}
-        <path
-          d="M20 34C12 34 5.5 27.5 5.5 19.5C5.5 15 7.5 11 11 8.5C10.5 7 11 5 12.5 4C14 3 16 3.5 17 4.5C18 3.5 19 3 20 3"
-          stroke="#6366F1"
-          strokeWidth="2"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <path
-          d="M7 14C6 15.5 5.5 17.5 5.5 19.5C5.5 27.5 12 34 20 34"
-          stroke="#6366F1"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-          opacity="0.5"
-        />
-        {/* Center line */}
-        <line x1="20" y1="5" x2="20" y2="34" stroke="#6366F1" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.3" />
-        {/* Brain right top arc */}
-        <path
-          d="M20 3C21 3 22 3.5 23 4.5C24 3.5 26 3 27.5 4C29 5 29.5 7 29 8.5C32.5 11 34.5 15 34.5 19.5C34.5 27.5 28 34 20 34"
-          stroke="#6366F1"
-          strokeWidth="2"
-          strokeLinecap="round"
-          fill="none"
-        />
-        {/* Soundwave bars (right side) */}
-        <rect x="22" y="21" width="2.5" height="10" rx="1.25" fill="#22D3EE">
-          <animate attributeName="height" values="10;15;10" dur="1.4s" repeatCount="indefinite" />
-          <animate attributeName="y" values="21;16;21" dur="1.4s" repeatCount="indefinite" />
-        </rect>
-        <rect x="26" y="17" width="2.5" height="14" rx="1.25" fill="#22D3EE">
-          <animate attributeName="height" values="14;20;14" dur="1.4s" begin="0.2s" repeatCount="indefinite" />
-          <animate attributeName="y" values="17;11;17" dur="1.4s" begin="0.2s" repeatCount="indefinite" />
-        </rect>
-        <rect x="30" y="20" width="2.5" height="11" rx="1.25" fill="#22D3EE" opacity="0.85">
-          <animate attributeName="height" values="11;17;11" dur="1.4s" begin="0.4s" repeatCount="indefinite" />
-          <animate attributeName="y" values="20;14;20" dur="1.4s" begin="0.4s" repeatCount="indefinite" />
-        </rect>
+        {/* Subtle base card badge */}
+        <rect width="32" height="32" rx="8" fill="var(--surface-2)" stroke="var(--border)" strokeWidth="1.2" />
+        {/* Acoustic Waveform Bars */}
+        <path d="M7 16V16.01" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M10 12V20" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M13 9V23" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" />
+        {/* Transitioning bridge path connecting to neuron node */}
+        <path d="M13 16H20" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
+        {/* Neuron Soma (Central Node) */}
+        <circle cx="21.5" cy="16" r="3.5" fill="var(--accent)" stroke="var(--surface)" strokeWidth="1.5" />
+        {/* Axon / Synaptic Projections */}
+        <path d="M24 13.5L26.5 11" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M25 16H27" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M24 18.5L26.5 21" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
-      <span
-        style={{
-          fontFamily: "'Space Grotesk', sans-serif",
-          fontWeight: 700,
-          fontSize: size === 'sm' ? '1.125rem' : size === 'lg' ? '1.875rem' : '1.25rem',
-          letterSpacing: '-0.025em',
-        }}
-      >
-        <span style={{ color: 'var(--text-primary)' }}>Neuro</span>
-        <span style={{ color: '#22D3EE' }}>Voice</span>
-      </span>
-    </Link>
+    )
+  }
+
+  const content = (
+    <div className={`inline-flex items-center ${dim.spacing} ${className}`}>
+      {renderMark()}
+      {showWordmark && (
+        <span className={`font-display tracking-tight text-[var(--text)] font-normal ${dim.text}`}>
+          <span className="font-bold text-[var(--text)]">Neuro</span>
+          <span className="font-normal text-[var(--text-muted)]">Voice</span>
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent)] ml-0.5 mb-1" />
+        </span>
+      )}
+    </div>
   )
+
+  if (href) {
+    return (
+      <Link href={href} className="inline-flex items-center group">
+        {content}
+      </Link>
+    )
+  }
+
+  return content
 }

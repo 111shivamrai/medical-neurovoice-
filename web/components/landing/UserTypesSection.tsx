@@ -29,19 +29,19 @@ export function UserTypesSection() {
     },
     {
       id: 'asha',
-      role: 'ASHA Community Health Workers',
+      role: 'Community Health Workers (ASHA)',
       icon: HeartPulse,
       accent: 'var(--accent)',
       badge: 'Rural Primary Health Centers',
       description:
-        'One button. Simple Hindi voice guidance. Three high-contrast outcomes (Green, Yellow, Red). Built for village health posts without high-end hardware.',
+        'One button. Simple Hindi voice guidance. Three high-contrast outcomes (Green, Yellow, Red). Built for ASHA (Accredited Social Health Activist, a village-level community health worker in India).',
       benefits: [
         'Single tap to record Hindi vowel prompt',
         'Clear action: Green, Yellow, or Red',
         'Zero complex clinical terminology',
-        'Direct link to district hospital appointments',
+        'Instant shareable WhatsApp referral slip',
       ],
-      ctaText: 'Launch Simple Mode (No Login) →',
+      ctaText: 'Community Health Worker Mode →',
       ctaHref: '/simple',
     },
     {

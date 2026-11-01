@@ -1,9 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useId, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Eye,
   EyeOff,
@@ -21,608 +20,783 @@ import {
   GraduationCap,
   HeartPulse,
   UserCheck,
+  Camera,
+  MapPin,
+  Calendar,
+  Shield,
+  FileText,
 } from 'lucide-react'
-import { AuthParticles } from '@/components/auth/AuthParticles'
 import { Logo } from '@/components/Logo'
-import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from 'firebase/auth'
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { auth, db, googleProvider } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase'
 
-type RoleId = 'doctor' | 'student' | 'asha' | 'personal'
+type RoleId = 'patient' | 'doctor' | 'chw' | 'researcher'
 
-interface RoleOption {
-  id: RoleId
-  title: string
-  subtitle: string
-  icon: any
-  color: string
-  badge: string
-}
-
-export default function SignUpPage() {
+function SignUpContent() {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2>(1)
-  const [selectedRole, setSelectedRole] = useState<RoleId | null>('doctor')
+  const searchParams = useSearchParams()
+  const nextRoute = searchParams.get('next') || '/dashboard'
 
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+
+  // Step 1: Account credentials
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [institution, setInstitution] = useState('Jabalpur Medical College')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [consent, setConsent] = useState(false)
-
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Step 2: Role
+  const [role, setRole] = useState<RoleId>('patient')
+
+  // Step 3: Demographics & Optional info
+  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [sex, setSex] = useState<'Male' | 'Female' | 'Prefer not to say'>('Prefer not to say')
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [mobile, setMobile] = useState('')
+  const [city, setCity] = useState('')
+  const [stateName, setStateName] = useState('')
+  const [preferredLang, setPreferredLang] = useState<'Hindi' | 'English'>('Hindi')
+  const [motherTongue, setMotherTongue] = useState('')
+  const [occupation, setOccupation] = useState('')
+
+  // Step 4: Role-specific details & Consents
+  const [doctorRegNumber, setDoctorRegNumber] = useState('')
+  const [institution, setInstitution] = useState('')
+  const [chwDistrict, setChwDistrict] = useState('')
+  const [chwBlock, setChwBlock] = useState('')
+
+  const [hasPriorDiagnosis, setHasPriorDiagnosis] = useState(false)
+  const [priorDiagnosisDetails, setPriorDiagnosisDetails] = useState('')
+  const [priorDiagnosisConsent, setPriorDiagnosisConsent] = useState(false)
+
+  const [termsConsent, setTermsConsent] = useState(false)
+  const [screeningLimitsConsent, setScreeningLimitsConsent] = useState(false)
+
   const [loading, setLoading] = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [shake, setShake] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
 
-  const roles: RoleOption[] = [
-    {
-      id: 'doctor',
-      title: 'Neurologist / Doctor',
-      subtitle: 'Clinical OPD screening, patient records, PDF referral generation',
-      icon: Stethoscope,
-      color: '#6366F1',
-      badge: 'Clinical Practice',
-    },
-    {
-      id: 'student',
-      title: 'Medical Student',
-      subtitle: 'Academic research access, voice dataset exploration, thesis case studies',
-      icon: GraduationCap,
-      color: '#8B5CF6',
-      badge: 'Research Access',
-    },
-    {
-      id: 'asha',
-      title: 'ASHA / Health Worker',
-      subtitle: 'Simple 3-colour triage (Green/Yellow/Red), regional Hindi prompt',
-      icon: HeartPulse,
-      color: '#22D3EE',
-      badge: 'Rural Care',
-    },
-    {
-      id: 'personal',
-      title: 'Personal Screening',
-      subtitle: 'Self-monitoring or family screening with clear acoustic indicators',
-      icon: UserCheck,
-      color: '#10B981',
-      badge: 'Individual',
-    },
-  ]
-
-  const triggerShake = () => {
-    setShake(true)
-    setTimeout(() => setShake(false), 600)
+  // Password Strength Calculator
+  const getPasswordStrength = (pass: string) => {
+    let score = 0
+    if (pass.length >= 8) score += 25
+    if (/[A-Z]/.test(pass)) score += 25
+    if (/[0-9]/.test(pass)) score += 25
+    if (/[^A-Za-z0-9]/.test(pass)) score += 25
+    return score
   }
 
-  const handleStep1Continue = () => {
-    if (!selectedRole) {
-      setError('Please choose a role to proceed.')
-      triggerShake()
-      return
+  const passStrength = getPasswordStrength(password)
+
+  // Validation per step
+  const isStep1Valid =
+    fullName.trim().length >= 2 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+    password.length >= 8 &&
+    password === confirmPassword
+
+  const isStep2Valid = !!role
+
+  const isStep3Valid = dateOfBirth.trim().length > 0 && !!sex
+
+  const isStep4Valid =
+    termsConsent &&
+    screeningLimitsConsent &&
+    (role !== 'doctor' || (doctorRegNumber.trim().length > 0 && institution.trim().length > 0)) &&
+    (role !== 'chw' || (chwDistrict.trim().length > 0 && chwBlock.trim().length > 0)) &&
+    (!hasPriorDiagnosis || priorDiagnosisConsent)
+
+  // Handle Photo File Upload
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Please choose an image under 2MB.')
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        setPhotoPreview(evt.target?.result as string)
+      }
+      reader.readAsDataURL(file)
     }
-    setError(null)
-    setStep(2)
   }
 
-  const handleCreateAccount = async (e: React.FormEvent) => {
+  // Submit Handler
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Form Validations
-    if (!fullName.trim() || !email.trim() || !password) {
-      setError('Please fill in all mandatory clinical profile fields.')
-      triggerShake()
-      return
-    }
-
-    if (password.length < 8) {
-      setError('Password must contain at least 8 characters for security.')
-      triggerShake()
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match. Please re-enter.')
-      triggerShake()
-      return
-    }
-
-    if (!consent) {
-      setError('You must acknowledge the medical research screening consent.')
-      triggerShake()
-      return
-    }
+    if (!isStep4Valid) return
 
     setLoading(true)
-    setError(null)
+    setServerError(null)
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password)
-      await updateProfile(userCredential.user, {
-        displayName: fullName.trim(),
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user
+
+      // Update Firebase Profile
+      await updateProfile(user, {
+        displayName: fullName,
+        photoURL: photoPreview || undefined,
       })
 
-      // Try saving profile to Firestore (failsafe if offline/placeholder config)
-      try {
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          uid: userCredential.user.uid,
-          displayName: fullName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          institution: institution.trim(),
-          role: selectedRole,
-          consentTimestamp: new Date().toISOString(),
-          onboardingCompleted: false,
-        })
-      } catch (dbErr) {
-        console.warn('Firestore write warning:', dbErr)
+      // Store extended demographic & clinical role data in Firestore
+      const userDoc = {
+        uid: user.uid,
+        fullName,
+        email,
+        role,
+        dateOfBirth,
+        sex,
+        mobile: mobile ? `+91 ${mobile.replace(/^\+91/, '').trim()}` : null,
+        city: city || null,
+        state: stateName || null,
+        preferredLanguage: preferredLang,
+        motherTongue: motherTongue || null,
+        occupation: occupation || null,
+        photoURL: photoPreview || null,
+        roleDetails: {
+          doctorRegNumber: role === 'doctor' ? doctorRegNumber : null,
+          institution: role === 'doctor' ? institution : null,
+          doctorStatus: role === 'doctor' ? 'pending_verification' : null,
+          chwDistrict: role === 'chw' ? chwDistrict : null,
+          chwBlock: role === 'chw' ? chwBlock : null,
+        },
+        healthHistory: {
+          hasPriorDiagnosis,
+          priorDiagnosisDetails: hasPriorDiagnosis ? priorDiagnosisDetails : null,
+        },
+        consents: {
+          termsConsent: true,
+          screeningLimitsConsent: true,
+          priorDiagnosisConsent: hasPriorDiagnosis ? priorDiagnosisConsent : false,
+          consentedAt: new Date().toISOString(),
+        },
+        createdAt: new Date().toISOString(),
       }
 
-      // Forward to Onboarding
-      router.push('/onboarding')
-    } catch (err: any) {
-      console.warn('Firebase registration error:', err?.code || err?.message)
-      let msg = 'Account registration could not be completed.'
-      if (err?.code === 'auth/email-already-in-use') {
-        msg = 'An account with this email address already exists. Please sign in.'
-      } else if (err?.code === 'auth/invalid-email') {
-        msg = 'The email address format is invalid.'
-      } else if (err?.code === 'auth/weak-password') {
-        msg = 'Password is too weak. Please use letters, numbers, and symbols.'
+      try {
+        await setDoc(doc(db, 'users', user.uid), userDoc)
+      } catch {
+        // Firestore rules or offline mock fallback
+        localStorage.setItem(`neurovoice_user_${user.uid}`, JSON.stringify(userDoc))
       }
-      setError(msg)
-      triggerShake()
-    } finally {
+
+      router.replace(nextRoute)
+    } catch (err: any) {
+      console.error('Registration error:', err)
+      if (err.code === 'auth/email-already-in-use') {
+        setServerError('An account with this email already exists. Please sign in instead.')
+      } else {
+        setServerError(err.message || 'Registration failed. Please check your details.')
+      }
       setLoading(false)
     }
   }
 
-  const handleGoogleSignUp = async () => {
-    setGoogleLoading(true)
-    setError(null)
-
-    try {
-      const res = await signInWithPopup(auth, googleProvider)
-      try {
-        await setDoc(doc(db, 'users', res.user.uid), {
-          uid: res.user.uid,
-          displayName: res.user.displayName,
-          email: res.user.email,
-          role: selectedRole || 'personal',
-          consentTimestamp: new Date().toISOString(),
-          onboardingCompleted: false,
-        })
-      } catch (dbErr) {
-        console.warn('Firestore write warning:', dbErr)
-      }
-      router.push('/onboarding')
-    } catch (err: any) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
-        setError('Google registration could not be completed. Please try again.')
-      }
-    } finally {
-      setGoogleLoading(false)
-    }
-  }
-
-  const requiresInstitution = selectedRole === 'doctor' || selectedRole === 'student'
+  const roles = [
+    {
+      id: 'patient' as RoleId,
+      title: 'Individual / Patient',
+      desc: 'Screen personal or family voice health with objective baseline tracking.',
+      icon: UserCheck,
+      color: 'var(--primary)',
+    },
+    {
+      id: 'doctor' as RoleId,
+      title: 'Clinician / Neurologist',
+      desc: 'Clinical OPD screening, differential reports, patient tracking.',
+      icon: Stethoscope,
+      color: '#1E40AF',
+    },
+    {
+      id: 'chw' as RoleId,
+      title: 'Community Health Worker (ASHA)',
+      desc: 'Simple three-tier triage (Green/Yellow/Red) and referral slips in rural clinics.',
+      icon: HeartPulse,
+      color: '#0D7377',
+    },
+    {
+      id: 'researcher' as RoleId,
+      title: 'Academic Researcher / Student',
+      desc: 'Access 20+ acoustic feature vectors and open acoustic benchmark datasets.',
+      icon: GraduationCap,
+      color: '#7C3AED',
+    },
+  ]
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#0A0F1E] text-white">
-      {/* Left (60%): Dark atmospheric branding with particles */}
-      <div className="relative hidden lg:flex lg:w-[60%] flex-col justify-between p-12 lg:p-16 border-r border-[#1F2937] overflow-hidden bg-[#070B16]">
-        <AuthParticles />
-
-        {/* Top Header */}
-        <div className="relative z-10">
-          <Logo size="lg" />
-        </div>
-
-        {/* Center Content */}
-        <div className="relative z-10 max-w-xl my-auto py-12">
-          <span className="inline-block px-3.5 py-1 rounded-full text-xs font-mono font-semibold tracking-wider text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 mb-6">
-            ADAPTIVE CLINICAL ROLE ARCHITECTURE
-          </span>
-
-          <blockquote className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.1] mb-8 text-white">
-            "Your voice carries{' '}
-            <span className="text-[#22D3EE] block">
-              the truth."
-            </span>
-          </blockquote>
-
-          <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-8">
-            Tailored neurological screening workflows configured specifically for your clinical practice,
-            academic research, or rural health post across Madhya Pradesh.
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+      <div className="max-w-xl mx-auto w-full space-y-8">
+        {/* Header & Logo */}
+        <div className="text-center space-y-2">
+          <Logo size="lg" className="justify-center" />
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-[var(--text)]">
+            Create your NeuroVoice Account
+          </h1>
+          <p className="text-xs text-[var(--muted)]">
+            Join the vocal biomarker screening platform for public neurological health
           </p>
+        </div>
 
-          <div className="space-y-3 pt-6 border-t border-[#1F2937]/80 text-sm">
-            <div className="flex items-center gap-3 text-gray-300">
-              <CheckCircle2 size={18} className="text-emerald-400" />
-              <span>Full compliance with Jabalpur Medical College clinical screening protocols</span>
-            </div>
-            <div className="flex items-center gap-3 text-gray-300">
-              <CheckCircle2 size={18} className="text-cyan-400" />
-              <span>Hindi & English acoustic feature extraction pipeline</span>
-            </div>
-            <div className="flex items-center gap-3 text-gray-300">
-              <CheckCircle2 size={18} className="text-indigo-400" />
-              <span>Instant calibrated risk scores across 4 neurological conditions</span>
-            </div>
+        {/* 4-Step Progress Bar */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono font-semibold text-[var(--muted)]">
+            <span>Step {step} of 4: {['Account', 'Role', 'Demographics', 'Verification & Consent'][step - 1]}</span>
+            <span>{step * 25}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-[var(--border)] overflow-hidden">
+            <div
+              className="h-full bg-[var(--primary)] transition-all duration-300"
+              style={{ width: `${step * 25}%` }}
+            />
           </div>
         </div>
 
-        {/* Bottom Tagline */}
-        <div className="relative z-10 flex items-center justify-between text-xs font-mono text-gray-500 border-t border-[#1F2937]/50 pt-4">
-          <span>Jabalpur Medical College · Government Medical Institution</span>
-          <span>Security: 256-Bit Cryptographic Storage</span>
-        </div>
-      </div>
-
-      {/* Right (40%): The Auth Form */}
-      <div className="flex-1 lg:w-[40%] flex items-center justify-center p-6 sm:p-12 lg:p-14 relative bg-[#0A0F1E]">
-        <div className="w-full max-w-lg">
-          {/* Mobile Logo */}
-          <div className="lg:hidden mb-6">
-            <Logo size="md" />
+        {/* Server Error Message */}
+        {serverError && (
+          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300 flex items-start gap-3">
+            <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+            <span>{serverError}</span>
           </div>
+        )}
 
-          {/* Stepper Header */}
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-[#1F2937]">
-            <div>
-              <span className="text-xs font-mono font-semibold uppercase tracking-wider text-cyan-400">
-                Step {step} of 2
-              </span>
-              <h2 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-white mt-1">
-                {step === 1 ? 'Choose Your Role' : 'Create Account'}
-              </h2>
-            </div>
-            {step === 2 && (
-              <button
-                onClick={() => setStep(1)}
-                className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
-              >
-                <ArrowLeft size={14} />
-                <span>Change Role</span>
-              </button>
-            )}
-          </div>
-
-          {/* Inline Error State */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -8, height: 0 }}
-                className="mb-6 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-xs flex items-start gap-3"
-              >
-                <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{error}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* STEP 1: ROLE SELECTION (Full cards, not a dropdown!) */}
+        {/* Card Form */}
+        <div className="p-6 sm:p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6">
+          {/* STEP 1: Account Credentials */}
           {step === 1 && (
-            <motion.div
-              initial={{ opacity: 0, x: -15 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 15 }}
-              className="space-y-4"
-            >
-              <p className="text-xs text-gray-400 mb-2">
-                Select your clinical or operational persona. Interface, terminology, and PDF outputs will adapt to your workflow.
+            <div className="space-y-4">
+              <h2 className="text-lg font-display font-bold text-[var(--text)]">
+                Step 1: Account Information
+              </h2>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--text)]">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Dr. Rajesh Sharma"
+                    className="input-clinical w-full pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--text)]">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@domain.com"
+                    className="input-clinical w-full pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--text)]">
+                  Password (min 8 characters) <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="input-clinical w-full pl-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {/* Password Strength Meter */}
+                {password && (
+                  <div className="space-y-1 pt-1">
+                    <div className="h-1.5 w-full rounded-full bg-[var(--surface-2)] overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-200 ${
+                          passStrength <= 25
+                            ? 'bg-red-500 w-1/4'
+                            : passStrength <= 50
+                            ? 'bg-amber-500 w-2/4'
+                            : passStrength <= 75
+                            ? 'bg-blue-500 w-3/4'
+                            : 'bg-emerald-500 w-full'
+                        }`}
+                      />
+                    </div>
+                    <span className="text-[11px] font-mono text-[var(--muted)]">
+                      Strength: {passStrength <= 25 ? 'Weak' : passStrength <= 50 ? 'Fair' : passStrength <= 75 ? 'Good' : 'Strong'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--text)]">
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="input-clinical w-full pl-10"
+                  />
+                </div>
+                {confirmPassword && password !== confirmPassword && (
+                  <span className="text-[11px] text-red-500">Passwords do not match</span>
+                )}
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                <button
+                  type="button"
+                  disabled={!isStep1Valid}
+                  onClick={() => setStep(2)}
+                  className="btn-primary text-xs py-2.5 px-6 rounded-xl disabled:opacity-50"
+                >
+                  Continue to Role Selection →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: Role Selection */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-display font-bold text-[var(--text)]">
+                Step 2: Choose Your Primary Role
+              </h2>
+              <p className="text-xs text-[var(--muted)]">
+                This customizes your screening dashboard tools and reporting format.
               </p>
 
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
                 {roles.map((r) => {
                   const Icon = r.icon
-                  const isSelected = selectedRole === r.id
-
+                  const selected = role === r.id
                   return (
                     <div
                       key={r.id}
-                      onClick={() => setSelectedRole(r.id)}
-                      className="p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all duration-200 flex items-start gap-4 relative group"
-                      style={{
-                        background: isSelected ? 'rgba(99, 102, 241, 0.12)' : '#111827',
-                        borderColor: isSelected ? r.color : '#1F2937',
-                        boxShadow: isSelected ? `0 0 25px ${r.color}30` : 'none',
-                        transform: isSelected ? 'scale(1.01)' : 'scale(1)',
-                      }}
+                      onClick={() => setRole(r.id)}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between space-y-2.5 ${
+                        selected
+                          ? 'border-[var(--primary)] bg-[var(--surface-2)] ring-2 ring-[var(--primary)]/15 shadow-sm'
+                          : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--muted)]'
+                      }`}
                     >
-                      <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform group-hover:scale-105"
-                        style={{
-                          background: `${r.color}20`,
-                          color: r.color,
-                          border: `1px solid ${r.color}40`,
-                        }}
-                      >
-                        <Icon size={22} />
-                      </div>
-
-                      <div className="flex-1 pr-6">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-display font-bold text-base text-white">
-                            {r.title}
-                          </h4>
-                          <span
-                            className="text-[10px] font-mono px-2 py-0.5 rounded-full border"
-                            style={{
-                              color: r.color,
-                              borderColor: `${r.color}40`,
-                              background: `${r.color}15`,
-                            }}
-                          >
-                            {r.badge}
-                          </span>
+                      <div className="flex items-center justify-between">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
+                          style={{ backgroundColor: r.color }}
+                        >
+                          <Icon size={16} />
                         </div>
-                        <p className="text-xs text-gray-400 leading-relaxed">
-                          {r.subtitle}
-                        </p>
+                        {selected && <CheckCircle2 size={16} className="text-[var(--primary)]" />}
                       </div>
-
-                      {/* Radio Indicator */}
-                      <div
-                        className="w-5 h-5 rounded-full border flex items-center justify-center absolute right-4 top-4"
-                        style={{
-                          borderColor: isSelected ? r.color : '#374151',
-                          background: isSelected ? r.color : 'transparent',
-                        }}
-                      >
-                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                      <div>
+                        <div className="font-bold text-xs text-[var(--text)]">{r.title}</div>
+                        <div className="text-[11px] text-[var(--muted)] leading-relaxed mt-1">
+                          {r.desc}
+                        </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
 
-              <button
-                type="button"
-                onClick={handleStep1Continue}
-                className="w-full py-4 px-6 rounded-xl font-display font-semibold text-sm text-white transition-all duration-300 hover:scale-[1.01] active:scale-98 flex items-center justify-center gap-2 mt-8 shadow-[0_0_30px_rgba(99,102,241,0.35)]"
-                style={{
-                  background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-                }}
-              >
-                <span>Continue with Selected Role</span>
-                <ArrowRight size={16} />
-              </button>
-
-              <p className="text-center text-xs text-gray-400 mt-6">
-                Already registered?{' '}
-                <Link href="/signin" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
-                  Sign in here →
-                </Link>
-              </p>
-            </motion.div>
+              <div className="pt-4 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  disabled={!isStep2Valid}
+                  onClick={() => setStep(3)}
+                  className="btn-primary text-xs py-2.5 px-6 rounded-xl disabled:opacity-50"
+                >
+                  Continue to Demographics →
+                </button>
+              </div>
+            </div>
           )}
 
-          {/* STEP 2: USER DETAILS FORM */}
-          {step === 2 && (
-            <motion.div
-              initial={{ opacity: 0, x: 15 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
-            >
-              {/* Google Quick Button */}
-              <button
-                type="button"
-                onClick={handleGoogleSignUp}
-                disabled={googleLoading || loading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-semibold text-sm bg-[#111827] hover:bg-[#1A2337] border border-[#1F2937] text-white transition-all duration-200 active:scale-98 disabled:opacity-60 mb-6 shadow-sm"
-              >
-                {googleLoading ? (
-                  <Loader2 size={16} className="animate-spin text-cyan-400" />
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                )}
-                <span>Sign up with Google</span>
-              </button>
+          {/* STEP 3: Demographics & Physiological Context */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-display font-bold text-[var(--text)]">
+                Step 3: Demographics & Profile (Optional Details)
+              </h2>
+              <p className="text-xs text-[var(--muted)]">
+                Acoustic baseline norms vary with biological age and sex.
+              </p>
 
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex-1 h-px bg-[#1F2937]" />
-                <span className="text-xs uppercase tracking-wider text-gray-500 font-mono">
-                  or fill details
-                </span>
-                <div className="flex-1 h-px bg-[#1F2937]" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[var(--text)]">
+                    Date of Birth <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="input-clinical w-full"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[var(--text)]">
+                    Biological Sex <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={sex}
+                    onChange={(e) => setSex(e.target.value as any)}
+                    className="input-clinical w-full"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Prefer not to say">Prefer not to say</option>
+                  </select>
+                </div>
               </div>
 
-              <motion.form
-                onSubmit={handleCreateAccount}
-                animate={shake ? { x: [-10, 10, -8, 8, -4, 4, 0] } : { x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="space-y-4"
-              >
-                {/* Full Name */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
-                    Full Name *
-                  </label>
-                  <div className="relative">
-                    <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Dr. Rajesh Sharma"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#111827] border border-[#1F2937] text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#6366F1]"
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
-                    Email Address *
-                  </label>
-                  <div className="relative">
-                    <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="r.sharma@jmc.ac.in"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#111827] border border-[#1F2937] text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#6366F1]"
-                    />
-                  </div>
-                </div>
-
-                {/* Phone & Institution in 2 cols */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
-                      Phone Number
-                    </label>
-                    <div className="relative">
-                      <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+91 98260 12345"
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#111827] border border-[#1F2937] text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#6366F1]"
-                      />
-                    </div>
-                  </div>
-
-                  {requiresInstitution && (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
-                        Institution / College *
-                      </label>
-                      <div className="relative">
-                        <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          required
-                          value={institution}
-                          onChange={(e) => setInstitution(e.target.value)}
-                          placeholder="Jabalpur Medical College"
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#111827] border border-[#1F2937] text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#6366F1]"
-                        />
-                      </div>
-                    </div>
+              {/* Photo Upload with Circle Crop Simulation */}
+              <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-[var(--surface)] border-2 border-[var(--border)] flex items-center justify-center shrink-0">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera size={22} className="text-[var(--muted)]" />
                   )}
                 </div>
-
-                {/* Passwords in 2 cols */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
-                      Password *
-                    </label>
-                    <div className="relative">
-                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Min 8 chars"
-                        className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-[#111827] border border-[#1F2937] text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#6366F1]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                      >
-                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
-                      Confirm Password *
-                    </label>
-                    <div className="relative">
-                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repeat password"
-                        className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-[#111827] border border-[#1F2937] text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#6366F1]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                      >
-                        {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex-1">
+                  <div className="text-xs font-semibold text-[var(--text)]">Profile Photo (Optional)</div>
+                  <div className="text-[11px] text-[var(--muted)] mb-2">Max 2MB · PNG, JPG, or WEBP</div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="text-xs file:mr-3 file:py-1 file:px-3 file:rounded-md file:border file:border-[var(--border)] file:bg-[var(--surface)] file:text-xs file:font-medium hover:file:bg-[var(--surface-2)] cursor-pointer"
+                  />
                 </div>
+              </div>
 
-                {/* Consent Checkbox (REQUIRED) */}
-                <div className="pt-2">
-                  <label className="flex items-start gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={consent}
-                      onChange={(e) => setConsent(e.target.checked)}
-                      className="mt-1 w-4 h-4 rounded border-[#374151] bg-[#111827] text-[#6366F1] focus:ring-[#6366F1]"
-                    />
-                    <span className="text-xs text-gray-400 leading-relaxed">
-                      I understand that <strong className="text-gray-200">NeuroVoice is a research screening tool, not a diagnostic device</strong>.
-                      Clinical interpretations must be validated by a certified neurologist.
-                    </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[var(--text)]">
+                    Mobile Number (Optional)
                   </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[var(--muted)]">+91</span>
+                    <input
+                      type="tel"
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value)}
+                      placeholder="98765 43210"
+                      className="input-clinical w-full pl-12"
+                    />
+                  </div>
                 </div>
 
-                {/* Create Account Button */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[var(--text)]">
+                    Preferred Language
+                  </label>
+                  <select
+                    value={preferredLang}
+                    onChange={(e) => setPreferredLang(e.target.value as any)}
+                    className="input-clinical w-full"
+                  >
+                    <option value="Hindi">हिंदी (Hindi)</option>
+                    <option value="English">English</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text)]">City</label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="e.g. Jabalpur"
+                    className="input-clinical w-full text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text)]">State</label>
+                  <input
+                    type="text"
+                    value={stateName}
+                    onChange={(e) => setStateName(e.target.value)}
+                    placeholder="Madhya Pradesh"
+                    className="input-clinical w-full text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[var(--text)]">Mother Tongue</label>
+                  <input
+                    type="text"
+                    value={motherTongue}
+                    onChange={(e) => setMotherTongue(e.target.value)}
+                    placeholder="e.g. Hindi, Bundeli"
+                    className="input-clinical w-full text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  disabled={!isStep3Valid}
+                  onClick={() => setStep(4)}
+                  className="btn-primary text-xs py-2.5 px-6 rounded-xl disabled:opacity-50"
+                >
+                  Continue to Verification →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: Role Credentials & Consents */}
+          {step === 4 && (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <h2 className="text-lg font-display font-bold text-[var(--text)]">
+                Step 4: Role Verification & Screening Consent
+              </h2>
+
+              {/* Conditional Doctor Fields */}
+              {role === 'doctor' && (
+                <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 space-y-3">
+                  <div className="text-xs font-bold text-[var(--primary)] flex items-center gap-1.5">
+                    <Stethoscope size={15} />
+                    <span>Clinician Verification Details</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-[var(--text)]">
+                        Medical Council Reg Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={doctorRegNumber}
+                        onChange={(e) => setDoctorRegNumber(e.target.value)}
+                        placeholder="e.g. MP-10492"
+                        className="input-clinical w-full text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-[var(--text)]">
+                        Hospital / Institution <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={institution}
+                        onChange={(e) => setInstitution(e.target.value)}
+                        placeholder="e.g. Marblecity Hospital"
+                        className="input-clinical w-full text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-[11px] font-mono text-[var(--muted)]">
+                    Status upon account creation: <span className="font-semibold text-amber-600">Pending Verification</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Conditional Health Worker Fields */}
+              {role === 'chw' && (
+                <div className="p-4 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900 space-y-3">
+                  <div className="text-xs font-bold text-[var(--accent)] flex items-center gap-1.5">
+                    <HeartPulse size={15} />
+                    <span>Community Health Worker Post</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-[var(--text)]">
+                        Assigned District <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={chwDistrict}
+                        onChange={(e) => setChwDistrict(e.target.value)}
+                        placeholder="e.g. Jabalpur"
+                        className="input-clinical w-full text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-[var(--text)]">
+                        Block / Sub-centre <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={chwBlock}
+                        onChange={(e) => setChwBlock(e.target.value)}
+                        placeholder="e.g. Panagar"
+                        className="input-clinical w-full text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Health History */}
+              <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] space-y-3">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasPriorDiagnosis}
+                    onChange={(e) => setHasPriorDiagnosis(e.target.checked)}
+                    className="mt-0.5 rounded border-[var(--border)] text-[var(--primary)]"
+                  />
+                  <span className="text-xs font-medium text-[var(--text)]">
+                    Optional: I have a prior neurological diagnosis (e.g. Parkinson's, Essential Tremor, Prior Stroke)
+                  </span>
+                </label>
+
+                {hasPriorDiagnosis && (
+                  <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+                    <input
+                      type="text"
+                      value={priorDiagnosisDetails}
+                      onChange={(e) => setPriorDiagnosisDetails(e.target.value)}
+                      placeholder="Specify diagnosis and approximate year (e.g. Parkinson's, 2023)"
+                      className="input-clinical w-full text-xs"
+                    />
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={priorDiagnosisConsent}
+                        onChange={(e) => setPriorDiagnosisConsent(e.target.checked)}
+                        className="mt-0.5 rounded border-[var(--border)] text-[var(--primary)]"
+                      />
+                      <span className="text-[11px] text-[var(--muted)] leading-relaxed">
+                        I consent to the use of my self-reported diagnosis solely for longitudinal tracking and personalized acoustic baseline comparisons.
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Required Terms & Screening Limit Consents */}
+              <div className="space-y-3 pt-2">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={termsConsent}
+                    onChange={(e) => setTermsConsent(e.target.checked)}
+                    className="mt-0.5 rounded border-[var(--border)] text-[var(--primary)]"
+                  />
+                  <span className="text-xs text-[var(--text)]">
+                    I agree to the <Link href="/licenses" className="text-[var(--primary)] underline">Terms of Service</Link> and data privacy practices. Raw audio will not be sold or retained. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={screeningLimitsConsent}
+                    onChange={(e) => setScreeningLimitsConsent(e.target.checked)}
+                    className="mt-0.5 rounded border-[var(--border)] text-[var(--primary)]"
+                  />
+                  <span className="text-xs text-[var(--text)]">
+                    <strong>Screening Limitations Consent:</strong> I understand that NeuroVoice is an investigational screening support tool and does NOT provide medical diagnoses or replace an evaluation by a licensed neurologist. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="pt-4 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                >
+                  ← Back
+                </button>
                 <button
                   type="submit"
-                  disabled={loading || googleLoading}
-                  className="w-full py-3.5 px-6 rounded-xl font-display font-semibold text-sm text-white transition-all duration-300 hover:scale-[1.01] active:scale-98 disabled:opacity-60 flex items-center justify-center gap-2 mt-4 shadow-[0_0_35px_rgba(99,102,241,0.4)]"
-                  style={{
-                    background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-                  }}
+                  disabled={!isStep4Valid || loading}
+                  className="btn-primary text-xs py-2.5 px-6 rounded-xl disabled:opacity-50 flex items-center gap-2"
                 >
                   {loading ? (
                     <>
-                      <Loader2 size={18} className="animate-spin text-white" />
-                      <span>Creating Clinical Account...</span>
+                      <Loader2 size={15} className="animate-spin" />
+                      <span>Creating Account...</span>
                     </>
                   ) : (
-                    <>
-                      <span>Create Account →</span>
-                    </>
+                    <span>Complete Registration →</span>
                   )}
                 </button>
-              </motion.form>
-            </motion.div>
+              </div>
+            </form>
           )}
+        </div>
+
+        {/* Existing account prompt */}
+        <div className="text-center text-xs text-[var(--muted)]">
+          Already have an account?{' '}
+          <Link href={`/signin?next=${encodeURIComponent(nextRoute)}`} className="font-semibold text-[var(--primary)] hover:underline">
+            Sign In here →
+          </Link>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-[var(--muted)]">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+        </div>
+      }
+    >
+      <SignUpContent />
+    </Suspense>
   )
 }

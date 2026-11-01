@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -14,11 +14,10 @@ import {
   ShieldCheck,
   Sun,
   Moon,
-  Sparkles,
-  Download,
-  HeartPulse,
   Search,
   X,
+  HeartPulse,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -29,13 +28,14 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, setOpen, onOpenChange }: CommandPaletteProps) {
+  const router = useRouter()
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === 'dark'
+
   const handleOpen = (val: boolean) => {
     if (setOpen) setOpen(val)
     if (onOpenChange) onOpenChange(val)
   }
-  const router = useRouter()
-  const { theme, toggleTheme } = useTheme()
-  const isDark = theme === 'dark'
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -49,7 +49,7 @@ export function CommandPalette({ open, setOpen, onOpenChange }: CommandPalettePr
     }
     document.addEventListener('keydown', down)
     return () => document.removeEventListener('keydown', down)
-  }, [open, setOpen, onOpenChange])
+  }, [open])
 
   const navigateTo = (path: string) => {
     handleOpen(false)
@@ -59,155 +59,147 @@ export function CommandPalette({ open, setOpen, onOpenChange }: CommandPalettePr
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => handleOpen(false)}
-            className="fixed inset-0 bg-black/75 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
           />
 
           {/* Palette Dialog */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            initial={{ opacity: 0, scale: 0.98, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="relative w-full max-w-xl rounded-2xl border shadow-[0_0_50px_rgba(99,102,241,0.25)] overflow-hidden z-10"
-            style={{
-              background: isDark ? '#111827' : '#FFFFFF',
-              borderColor: isDark ? '#1F2937' : '#E2E8F0',
-            }}
+            exit={{ opacity: 0, scale: 0.98, y: -8 }}
+            transition={{ duration: 0.15 }}
+            className="relative w-full max-w-xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-md)] overflow-hidden z-10"
           >
-            <Command
-              className="w-full text-sm"
-              label="NeuroVoice Command Centre"
-            >
+            <Command className="w-full text-sm" label="NeuroVoice Navigation">
               {/* Search input */}
-              <div
-                className="flex items-center px-4 py-3.5 border-b gap-3"
-                style={{ borderColor: isDark ? '#1F2937' : '#E2E8F0' }}
-              >
-                <Search size={18} className="text-gray-400" />
+              <div className="flex items-center px-4 py-3.5 border-b border-[var(--border)] gap-3 bg-[var(--surface)]">
+                <Search size={17} className="text-[var(--muted)]" />
                 <Command.Input
                   autoFocus
-                  placeholder="Type a command or search (e.g. 'new scan', 'doctors', 'reports')..."
-                  className="w-full bg-transparent outline-none text-sm placeholder-gray-500 font-sans"
-                  style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
+                  placeholder="Search actions or navigate (e.g. 'screening', 'doctor', 'reports')..."
+                  className="w-full bg-transparent outline-none text-sm placeholder-[var(--muted)] text-[var(--text)] font-sans"
                 />
                 <button
                   onClick={() => handleOpen(false)}
-                  className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-white/10"
-                  aria-label="Close command palette"
+                  className="p-1 rounded-md text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+                  aria-label="Close"
                 >
                   <X size={16} />
                 </button>
               </div>
 
-              {/* Items List */}
-              <Command.List className="max-h-80 overflow-y-auto p-2 space-y-1">
-                <Command.Empty className="py-6 text-center text-xs text-gray-400 font-mono">
-                  No matching clinical command found.
+              {/* Items List grouped by Screening, Reports, Care, Account */}
+              <Command.List className="max-h-84 overflow-y-auto p-2 space-y-2">
+                <Command.Empty className="py-6 text-center text-xs text-[var(--muted)] font-mono">
+                  No matching action found.
                 </Command.Empty>
 
-                <Command.Group heading="CLINICAL ACTIONS" className="px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider text-gray-400">
+                {/* GROUP 1: SCREENING */}
+                <Command.Group heading="Screening" className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] font-bold">
                   <Command.Item
                     onSelect={() => navigateTo('/dashboard/scan')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[#6366F1]/15 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-cyan-500/15 text-[#22D3EE] flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
                       <Mic size={15} />
                     </div>
                     <span>Start New 30-Second Voice Screening</span>
-                    <span className="ml-auto text-[10px] font-mono text-cyan-400">/scan</span>
                   </Command.Item>
 
                   <Command.Item
                     onSelect={() => navigateTo('/simple')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[#10B981]/15 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-[#10B981] flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
                       <HeartPulse size={15} />
                     </div>
-                    <span>Open ASHA Worker Simple Mode (Hindi)</span>
-                    <span className="ml-auto text-[10px] font-mono text-emerald-400">/simple</span>
+                    <span>Open Community Health Worker Mode (Hindi-First)</span>
                   </Command.Item>
                 </Command.Group>
 
-                <Command.Group heading="PORTAL NAVIGATION" className="px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider text-gray-400 pt-2">
+                {/* GROUP 2: REPORTS */}
+                <Command.Group heading="Reports" className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] font-bold pt-1">
                   <Command.Item
                     onSelect={() => navigateTo('/dashboard/history')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
                   >
-                    <Clock size={16} className="text-indigo-400" />
-                    <span>My Reports & Longitudinal Timeline</span>
+                    <div className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
+                      <FileText size={15} />
+                    </div>
+                    <span>View Screening Reports & Longitudinal Timeline</span>
                   </Command.Item>
 
                   <Command.Item
-                    onSelect={() => navigateTo('/dashboard/doctors')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
+                    onSelect={() => navigateTo('/dashboard/history?tab=compare')}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
                   >
-                    <Users size={16} className="text-purple-400" />
-                    <span>Find Doctors & Specialists (Jabalpur)</span>
-                  </Command.Item>
-
-                  <Command.Item
-                    onSelect={() => navigateTo('/dashboard/appointments')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
-                  >
-                    <Calendar size={16} className="text-teal-400" />
-                    <span>Book & Manage Appointments</span>
-                  </Command.Item>
-
-                  <Command.Item
-                    onSelect={() => navigateTo('/dashboard/profile')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
-                  >
-                    <User size={16} className="text-amber-400" />
-                    <span>User Profile, Stats & Achievements</span>
-                  </Command.Item>
-
-                  <Command.Item
-                    onSelect={() => navigateTo('/admin')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
-                  >
-                    <ShieldCheck size={16} className="text-red-400" />
-                    <span>Admin Control Centre (Role-Gated)</span>
-                    <span className="ml-auto text-[10px] font-mono text-red-400">/admin</span>
+                    <div className="w-7 h-7 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
+                      <SlidersHorizontal size={15} />
+                    </div>
+                    <span>Compare Two Screening Sessions</span>
                   </Command.Item>
                 </Command.Group>
 
-                <Command.Group heading="PREFERENCES" className="px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider text-gray-400 pt-2">
+                {/* GROUP 3: CARE */}
+                <Command.Group heading="Care" className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] font-bold pt-1">
+                  <Command.Item
+                    onSelect={() => navigateTo('/dashboard/care')}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-teal-500/10 text-[var(--accent)] flex items-center justify-center">
+                      <Users size={15} />
+                    </div>
+                    <span>Find Verified Neurologists & Distance</span>
+                  </Command.Item>
+
+                  <Command.Item
+                    onSelect={() => navigateTo('/dashboard/care?tab=appointments')}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-[var(--primary)] flex items-center justify-center">
+                      <Calendar size={15} />
+                    </div>
+                    <span>My Consultation Requests & Appointments</span>
+                  </Command.Item>
+                </Command.Group>
+
+                {/* GROUP 4: ACCOUNT */}
+                <Command.Group heading="Account" className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] font-bold pt-1">
+                  <Command.Item
+                    onSelect={() => navigateTo('/dashboard/profile')}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-[var(--surface-2)] text-[var(--text)] flex items-center justify-center">
+                      <User size={15} />
+                    </div>
+                    <span>My Profile & Clinical Stats</span>
+                  </Command.Item>
+
                   <Command.Item
                     onSelect={() => {
                       toggleTheme()
                       handleOpen(false)
                     }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium transition-colors"
-                    style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
                   >
-                    {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-indigo-400" />}
+                    <div className="w-7 h-7 rounded-lg bg-[var(--surface-2)] text-amber-500 flex items-center justify-center">
+                      {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                    </div>
                     <span>Toggle {isDark ? 'Light' : 'Dark'} Mode</span>
                   </Command.Item>
                 </Command.Group>
               </Command.List>
 
-              {/* Footer hotkey tip */}
-              <div
-                className="px-4 py-2 border-t flex items-center justify-between text-[11px] font-mono text-gray-500"
-                style={{ borderColor: isDark ? '#1F2937' : '#E2E8F0' }}
-              >
-                <span>Navigate: ↑ ↓ · Select: ↵</span>
-                <span>ESC to dismiss</span>
+              {/* Exact Required Footer */}
+              <div className="px-4 py-2.5 border-t border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-mono text-[var(--muted)] text-center">
+                Press ↑ ↓ to navigate · Enter to select · Esc to close
               </div>
             </Command>
           </motion.div>

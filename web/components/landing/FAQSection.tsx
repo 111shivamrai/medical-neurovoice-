@@ -1,73 +1,94 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, HelpCircle } from 'lucide-react'
 
 export function FAQSection() {
   const [openIdx, setOpenIdx] = useState<number | null>(0)
 
   const faqs = [
     {
-      q: 'Is this a medical diagnosis?',
-      a: 'No. NeuroVoice is a research screening support tool. Results provide objective acoustic biomarker analysis to support clinical evaluation, but do not replace a neurological examination. Always consult a qualified physician or neurologist.',
+      q: 'Is NeuroVoice a clinical medical diagnosis?',
+      a: 'No. NeuroVoice is an investigational vocal biomarker screening support and research tool. It produces objective mathematical measurements of vocal motor coordination, pitch perturbation, and acoustic energy to help individuals and clinicians decide whether a full neurological consultation is advised. It never replaces clinical diagnostic tests, neuroimaging (MRI/CT), or an in-person physical examination by a licensed neurologist.',
     },
     {
-      q: 'Does it work in Hindi?',
-      a: 'Yes. Hindi and English are both natively supported. Our acoustic feature extraction operates on language-independent phonetic biomarkers (such as vocal cord jitter, shimmer, harmonics-to-noise ratio, and formants) alongside Hindi-tailored speech prompts.',
+      q: 'How can a 30-second voice sample reveal neurological changes?',
+      a: 'Speech production is among the most complex neuromuscular activities in the human body, requiring millisecond-level coordination between respiratory breath support, the larynx (vocal cords), and over 100 oral articulatory muscles. Neurodegenerative conditions such as Parkinson\'s and Alzheimer\'s cause subtle micro-tremors, incomplete vocal fold closure, and hesitation pauses that appear acoustically long before overt physical tremors or major cognitive impairment are visible.',
     },
     {
-      q: 'Is my voice data stored?',
-      a: 'No. Raw audio recordings are immediately deleted from server memory after acoustic feature extraction unless explicit opt-in consent is given for research archives. Only anonymized numerical feature vectors are retained.',
+      q: 'Does it work in Hindi and regional Indian accents?',
+      a: 'Yes. Hindi and English are natively supported. Our acoustic pipeline relies on language-independent biophysical features — including fundamental frequency tremor (jitter), amplitude instability (shimmer), harmonic-to-noise ratio (HNR), and formant centralisation — alongside phonetic prompts designed specifically for Hindi vowel phonation (e.g. sustained "आ..." phonation).',
     },
     {
-      q: 'Who can use it?',
-      a: 'NeuroVoice is designed for neurologists, medical students, ASHA community health workers in rural Madhya Pradesh, and individuals monitoring vocal wellness over time.',
+      q: 'What is Community Health Worker Mode (formerly ASHA Mode)?',
+      a: 'Community Health Worker Mode is a high-contrast, offline-capable interface designed specifically for frontline healthcare providers, including ASHA (Accredited Social Health Activist, a village-level community health worker in India). It features audio-guided instructions in Hindi, simplified three-tier results (Green / Yellow / Red), and generates instant WhatsApp referral slips for rural primary health centres without requiring patient internet logins.',
     },
     {
-      q: 'Is it free?',
-      a: 'Yes. NeuroVoice is completely free for research demonstration, educational use, and community health screening in collaboration with academic health institutions.',
+      q: 'Is my voice recording stored or shared on the internet?',
+      a: 'No. We follow strict privacy-by-design standards. The raw audio file you record is kept in temporary memory solely during acoustic extraction and is deleted immediately afterward. Only the resulting anonymous numerical feature measurements are stored in your encrypted report. We never sell, broadcast, or retain raw patient voice recordings.',
+    },
+    {
+      q: 'What happens if my recording quality is poor or background noise is high?',
+      a: 'NeuroVoice verifies the Signal-to-Noise Ratio (SNR) in Stage 2 of the pipeline. If your room is too noisy, or if background traffic, ceiling fans, or speech hum causes the SNR to drop below 10 dB, the system returns an "Inconclusive" status and prompts you to re-record in a quieter environment. We refuse to present unreliable estimates as clinical output.',
+    },
+    {
+      q: 'How should I share these screening results with my doctor?',
+      a: 'Every completed screening allows you to download a comprehensive 5-page clinical PDF report. The document includes person details, typical reference ranges with cited medical papers, top influencing acoustic features, and 5 suggested questions to ask your physician during your clinic visit. You can print the report or share it directly with your physician.',
     },
   ]
 
+  const toggle = (idx: number) => {
+    setOpenIdx(openIdx === idx ? null : idx)
+  }
+
   return (
-    <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--surface)] border-t border-[var(--border)] transition-colors duration-300">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="inline-block px-3.5 py-1 rounded-full text-xs font-semibold tracking-wider uppercase mb-4 bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20">
+    <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--surface)] border-b border-[var(--border)] transition-colors duration-200">
+      <div className="max-w-4xl mx-auto space-y-12">
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <span className="text-xs font-mono font-semibold tracking-wider uppercase text-[var(--accent)]">
             Frequently Asked Questions
           </span>
-          <h2 className="text-3xl sm:text-4xl font-display font-bold text-[var(--text)] tracking-tight mb-4">
-            Clear Answers, Honest Limits
+          <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-[var(--text)] tracking-tight">
+            Clear Answers, Honest Boundaries
           </h2>
-          <p className="text-base text-[var(--text-muted)]">
-            Transparent explanations about how NeuroVoice works, data privacy, and research boundaries.
+          <p className="text-sm sm:text-base text-[var(--muted)] leading-relaxed">
+            Transparent information about our screening methodology, research limits, and data privacy.
           </p>
         </div>
 
-        <div className="space-y-4">
+        {/* 7 Accordion Items */}
+        <div className="space-y-3.5">
           {faqs.map((faq, idx) => {
             const isOpen = openIdx === idx
             return (
               <div
-                key={faq.q}
-                className="rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden transition-all"
+                key={idx}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] transition-all shadow-[var(--shadow-sm)] overflow-hidden"
               >
                 <button
                   type="button"
-                  onClick={() => setOpenIdx(isOpen ? null : idx)}
-                  className="w-full px-6 py-5 text-left flex items-center justify-between gap-4 font-semibold text-[var(--text)] hover:text-[var(--primary)] transition-colors"
+                  onClick={() => toggle(idx)}
+                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-display font-bold text-base text-[var(--text)] hover:text-[var(--primary)] transition-colors"
+                  aria-expanded={isOpen}
                 >
-                  <span className="text-base font-display">{faq.q}</span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-xs font-mono font-bold text-[var(--accent)]">
+                      0{idx + 1}
+                    </span>
+                    <span>{faq.q}</span>
+                  </span>
                   <ChevronDown
-                    size={20}
-                    className={`text-[var(--text-muted)] transition-transform duration-200 flex-shrink-0 ${
+                    size={18}
+                    className={`shrink-0 text-[var(--muted)] transition-transform duration-200 ${
                       isOpen ? 'rotate-180 text-[var(--primary)]' : ''
                     }`}
                   />
                 </button>
+
                 {isOpen && (
-                  <div className="px-6 pb-6 text-sm text-[var(--text-muted)] leading-relaxed border-t border-[var(--border)]/50 pt-4">
-                    {faq.a}
+                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-[var(--muted)] leading-relaxed border-t border-[var(--border)]/50 bg-[var(--surface-2)]/40">
+                    <p className="pt-2">{faq.a}</p>
                   </div>
                 )}
               </div>

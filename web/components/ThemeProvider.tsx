@@ -10,21 +10,21 @@ interface ThemeContextType {
 }
 
 export const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
 })
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [theme, setTheme] = useState<Theme>('light')
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('neurovoice-theme') as Theme | null
-      const resolved = stored === 'light' ? 'light' : 'dark'
+      const resolved = stored === 'dark' ? 'dark' : 'light'
       setTheme(resolved)
       applyTheme(resolved)
     } catch {
-      applyTheme('dark')
+      applyTheme('light')
     }
   }, [])
 

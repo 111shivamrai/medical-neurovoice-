@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import {
   Mic,
   Volume2,
@@ -8,231 +8,223 @@ import {
   Layers,
   BarChart3,
   Cpu,
-  HelpCircle,
-  TrendingUp,
-  FileDown,
+  Brain,
+  Sparkles,
+  FileCheck,
 } from 'lucide-react'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger)
-}
 
 interface Stage {
   number: string
-  step: number
   title: string
-  shortText: string
-  plainDescription: string
-  color: string
+  category: string
+  plainText: string
+  technicalDetails: string
   icon: any
 }
 
 export function PipelineSection() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [activeStage, setActiveStage] = useState(0)
+  const [selectedStage, setSelectedStage] = useState(0)
+  const detailRef = useRef<HTMLDivElement>(null)
 
   const stages: Stage[] = [
     {
       number: '01',
-      step: 1,
-      title: 'Speech Acquisition',
-      shortText: 'Browser mic capture',
-      plainDescription: 'Record 30 seconds of speech in Hindi or English on any smartphone or laptop without software installation.',
-      color: 'var(--primary)',
+      title: 'Speech Acquisition & Audio Intake',
+      category: 'Audio Ingestion',
+      plainText:
+        'You speak into your smartphone or computer microphone for 30 seconds. No apps, calibrations, or expensive hospital equipment required.',
+      technicalDetails:
+        'Captures 16-bit PCM uncompressed WAV at 16/44.1 kHz. Immediately verifies audio payload format and bounds duration under 120s.',
       icon: Mic,
     },
     {
       number: '02',
-      step: 2,
-      title: 'Voice Quality Check',
-      shortText: 'SNR and loudness check',
-      plainDescription: 'Real-time noise and loudness verification ensures only clean, audible phonation enters the analysis pipeline.',
-      color: 'var(--primary)',
+      title: 'Signal Quality & Noise Floor Verification',
+      category: 'Acoustic Quality',
+      plainText:
+        'We measure room quietness and check that your voice was loud and clear enough. If your room is too noisy, we warn you right away.',
+      technicalDetails:
+        'Computes decibel Signal-to-Noise Ratio (SNR). Enforces a minimum 10 dB threshold; recordings with SNR < 10 dB return Inconclusive.',
       icon: Volume2,
     },
     {
       number: '03',
-      step: 3,
-      title: 'Noise Reduction',
-      shortText: 'Wiener acoustic filtering',
-      plainDescription: 'Eliminates ambient background noise, room reverberation, and ceiling fan hum while preserving vocal fold harmonics.',
-      color: 'var(--accent)',
+      title: 'Adaptive Noise Suppression',
+      category: 'Spectral Cleaning',
+      plainText:
+        'We filter out background room hum, fan noise, and traffic rumblings without dampening the delicate acoustic harmonics of your vocal cords.',
+      technicalDetails:
+        'Applies stationary Wiener filtering and spectral subtraction across noise non-speech segments to retain genuine formants.',
       icon: Filter,
     },
     {
       number: '04',
-      step: 4,
-      title: 'Segmentation',
-      shortText: '25ms frames with 10ms stride',
-      plainDescription: 'Continuous audio is divided into 25-millisecond overlapping speech frames conforming to phonetics standards.',
-      color: 'var(--accent)',
+      title: '25-Millisecond Vocal Windowing',
+      category: 'Temporal Slicing',
+      plainText:
+        'Your voice is sliced into hundreds of tiny 25-millisecond snapshots. This lets us inspect micro-vocal vibrations that the human ear cannot detect.',
+      technicalDetails:
+        'Frames raw signal with 25ms window length and 10ms hop step (overlap) using Hann tapering to prevent spectral leakage.',
       icon: Layers,
     },
     {
       number: '05',
-      step: 5,
-      title: 'Feature Extraction',
-      shortText: 'MFCC, jitter, shimmer, HNR',
-      plainDescription: 'Extracts 20+ acoustic parameters: fundamental pitch, vocal tremor (jitter/shimmer), HNR, formants, and MFCC patterns.',
-      color: 'var(--success)',
+      title: 'Phonetic & Cepstral Decomposition (MFCCs)',
+      category: 'Spectral Envelope',
+      plainText:
+        'We calculate the acoustic resonant shapes of your throat and mouth as you pronounce vowels, producing a 13-part vocal fingerprint.',
+      technicalDetails:
+        'Extracts 13 Mel-Frequency Cepstral Coefficients (MFCC 1–13) plus velocity (delta) and acceleration (delta-delta) vectors.',
       icon: BarChart3,
     },
     {
       number: '06',
-      step: 6,
-      title: 'AI Model Fusion',
-      shortText: 'CNN-GRU + LightGBM + wav2vec',
-      plainDescription: 'Combines temporal recurrence, tabular acoustic vectors, and phonetic speech embeddings into a unified representation.',
-      color: 'var(--success)',
+      title: 'Biomarker Extraction (openSMILE + Praat)',
+      category: 'Clinical Biomechanics',
+      plainText:
+        'We measure vocal pitch tremor, loudness fluctuation, and breathiness using the exact same phonetic standards used in neurology clinics.',
+      technicalDetails:
+        'Extracts 88 clinical eGeMAPSv02 functionals via openSMILE, alongside native Praat Parselmouth F0, Jitter (local), Shimmer (local), HNR (dB), and Formants (F1–F3).',
       icon: Cpu,
     },
     {
       number: '07',
-      step: 7,
-      title: 'Explainability Layer',
-      shortText: 'SHAP shows which features mattered',
-      plainDescription: 'Quantifies each acoustic feature’s exact contribution to the risk score, highlighting specific vocal deviations for doctors.',
-      color: 'var(--warning)',
-      icon: HelpCircle,
+      title: 'Deep Phonetic Representation (Wav2Vec 2.0)',
+      category: 'Deep Feature Fusion',
+      plainText:
+        'A neural network trained on thousands of hours of human speech analyses deep contextual cadence and rhythm variations.',
+      technicalDetails:
+        'Passes normalized frames through facebook/wav2vec2-base transformer layers to capture high-order latent acoustic representations.',
+      icon: Brain,
     },
     {
       number: '08',
-      step: 8,
-      title: 'Risk Scoring',
-      shortText: '0-100 risk score per disorder',
-      plainDescription: 'Produces continuous 0–100 Bayesian risk scores for Parkinson’s, Alzheimer’s, Dysarthria, and Post-Stroke Impairment.',
-      color: 'var(--warning)',
-      icon: TrendingUp,
+      title: 'Evidence-Based Risk Scoring (RiskModel)',
+      category: 'Ensemble Classification',
+      plainText:
+        'We compare your measurements against validated peer-reviewed ranges for each condition to determine if any metric is atypical.',
+      technicalDetails:
+        'Ensemble combines eGeMAPSv02 (45%), native phonetics (35%), and wav2vec (20%) using peer-reviewed biomarker decision thresholds.',
+      icon: Sparkles,
     },
     {
       number: '09',
-      step: 9,
-      title: 'Report Generation',
-      shortText: 'Downloadable PDF with doctor referral',
-      plainDescription: 'Generates a 5-page clinical PDF report with biomarker tables, SHAP feature rankings, and specialist consultation advice.',
-      color: 'var(--danger)',
-      icon: FileDown,
+      title: 'Explainability & Consultation Report',
+      category: 'Transparent Output',
+      plainText:
+        'Rather than a single mystery score, we explain every factor in plain words and generate a structured summary for your doctor.',
+      technicalDetails:
+        'Computes SHAP directional feature impacts relative to age/sex baseline norms. Generates a 5-page clinical PDF report.',
+      icon: FileCheck,
     },
   ]
 
-  // GSAP ScrollTrigger Integration
-  useEffect(() => {
-    if (typeof window === 'undefined') return
+  const handleSelectStage = (idx: number) => {
+    setSelectedStage(idx)
+    detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
 
-    let ctx: any = null
-    try {
-      ctx = gsap.context(() => {
-        stages.forEach((_, index) => {
-          const el = document.getElementById(`stage-${index}`)
-          if (el) {
-            ScrollTrigger.create({
-              trigger: el,
-              start: 'top center+=100',
-              end: 'bottom center+=100',
-              onEnter: () => setActiveStage(index),
-              onEnterBack: () => setActiveStage(index),
-            })
-          }
-        })
-      }, containerRef)
-    } catch (e) {
-      console.warn('ScrollTrigger initialization fallback:', e)
-    }
-
-    return () => {
-      try {
-        ctx?.revert?.()
-      } catch {}
-    }
-  }, [])
+  const current = stages[selectedStage]
+  const CurrentIcon = current.icon
 
   return (
-    <section
-      id="pipeline"
-      ref={containerRef}
-      className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--surface)] border-t border-[var(--border)] transition-colors duration-300"
-    >
-      <div className="max-w-5xl mx-auto">
+    <section id="pipeline" className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--surface)] border-b border-[var(--border)] transition-colors duration-200">
+      <div className="max-w-7xl mx-auto space-y-12">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="inline-block px-3.5 py-1 rounded-full text-xs font-semibold tracking-wider uppercase mb-4 bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">
-            Validated Architecture
+        <div className="text-center max-w-3xl mx-auto space-y-3">
+          <span className="text-xs font-mono font-semibold tracking-wider uppercase text-[var(--accent)]">
+            Transparent Architecture
           </span>
-          <h2 className="text-3xl sm:text-4xl font-display font-bold text-[var(--text)] tracking-tight mb-4">
-            The 9-Stage AI Voice Pipeline
+          <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-[var(--text)] tracking-tight">
+            The 9-Stage Acoustic Pipeline
           </h2>
-          <p className="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed">
-            Every 30-second recording passes through an end-to-end signal processing and explainability pipeline.
+          <p className="text-sm sm:text-base text-[var(--muted)] leading-relaxed">
+            Every step from the moment you speak to the final report is explained plainly. Click any stage to inspect what happens.
           </p>
         </div>
 
-        {/* Vertical Pipeline Timeline with Scroll storytelling */}
-        <div className="relative">
-          {/* Vertical central spine line */}
-          <div
-            className="absolute left-4 sm:left-8 top-6 bottom-6 w-0.5 pointer-events-none transition-colors"
-            style={{
-              background: 'linear-gradient(to bottom, var(--primary) 0%, var(--accent) 40%, var(--success) 70%, var(--danger) 100%)',
-              opacity: 0.35,
-            }}
-          />
+        {/* 9 Stage Interactive Navigator Pills */}
+        <div className="grid grid-cols-3 sm:grid-cols-9 gap-2">
+          {stages.map((st, idx) => {
+            const isSelected = selectedStage === idx
+            return (
+              <button
+                key={st.number}
+                type="button"
+                onClick={() => handleSelectStage(idx)}
+                className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
+                  isSelected
+                    ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm'
+                    : 'bg-[var(--surface-2)] text-[var(--text)] border-[var(--border)] hover:border-[var(--primary)]'
+                }`}
+              >
+                <span className="font-mono text-xs font-bold">{st.number}</span>
+                <span className="text-[11px] font-medium truncate w-full">
+                  {st.title.split(' ')[0]}
+                </span>
+              </button>
+            )
+          })}
+        </div>
 
-          <div className="space-y-8 sm:space-y-12">
-            {stages.map((stage, idx) => {
-              const Icon = stage.icon
-              const isCurrent = activeStage === idx
+        {/* Detailed Stage Inspector Card */}
+        <div
+          ref={detailRef}
+          className="p-6 sm:p-8 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center shrink-0">
+                <CurrentIcon size={24} />
+              </div>
+              <div>
+                <span className="text-xs font-mono font-bold text-[var(--accent)] uppercase tracking-wider">
+                  Stage {current.number} · {current.category}
+                </span>
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-[var(--text)]">
+                  {current.title}
+                </h3>
+              </div>
+            </div>
 
-              return (
-                <div
-                  key={stage.number}
-                  id={`stage-${idx}`}
-                  className="relative flex items-start gap-5 sm:gap-8 transition-all duration-300"
-                >
-                  {/* Glowing Node on Timeline */}
-                  <div className="relative z-10 flex-shrink-0">
-                    <div
-                      className="w-9 h-9 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-display font-bold text-xs sm:text-lg border transition-all duration-300"
-                      style={{
-                        background: isCurrent ? stage.color : 'var(--bg)',
-                        borderColor: isCurrent ? stage.color : 'var(--border)',
-                        color: isCurrent ? '#FFFFFF' : 'var(--text-muted)',
-                        boxShadow: isCurrent ? `0 0 30px ${stage.color}60` : 'none',
-                        transform: isCurrent ? 'scale(1.08)' : 'scale(1)',
-                      }}
-                    >
-                      <span>{stage.number}</span>
-                    </div>
-                  </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={selectedStage === 0}
+                onClick={() => setSelectedStage((prev) => Math.max(0, prev - 1))}
+                className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold disabled:opacity-40"
+              >
+                ← Prev Stage
+              </button>
+              <button
+                type="button"
+                disabled={selectedStage === stages.length - 1}
+                onClick={() => setSelectedStage((prev) => Math.min(stages.length - 1, prev + 1))}
+                className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold disabled:opacity-40"
+              >
+                Next Stage →
+              </button>
+            </div>
+          </div>
 
-                  {/* Stage Content Card */}
-                  <div
-                    className={`flex-1 p-5 sm:p-6 rounded-2xl border transition-all duration-300 ${
-                      isCurrent
-                        ? 'bg-[var(--bg)] border-[var(--primary)] shadow-lg'
-                        : 'bg-[var(--bg)]/60 border-[var(--border)]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <Icon size={16} className="text-[var(--accent)]" />
-                        <h3 className="text-base sm:text-lg font-bold text-[var(--text)] font-display">
-                          {stage.title}
-                        </h3>
-                      </div>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)]">
-                        {stage.shortText}
-                      </span>
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2 p-5 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
+              <div className="text-xs font-mono font-bold text-[var(--primary)] uppercase">
+                What This Means in Plain Words
+              </div>
+              <p className="text-sm text-[var(--text)] leading-relaxed">
+                {current.plainText}
+              </p>
+            </div>
 
-                    <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
-                      {stage.plainDescription}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
+            <div className="space-y-2 p-5 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
+              <div className="text-xs font-mono font-bold text-[var(--accent)] uppercase">
+                Clinical & Engineering Implementation
+              </div>
+              <p className="text-xs text-[var(--muted)] font-mono leading-relaxed">
+                {current.technicalDetails}
+              </p>
+            </div>
           </div>
         </div>
       </div>
