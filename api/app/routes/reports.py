@@ -30,10 +30,16 @@ async def generate_pdf_report(report_id: str):
         # Fallback to demo report if arbitrary ID provided
         screening = list(db_manager.screenings.values())[0]
 
+    # Format patient name and clean filename
+    user_name = screening.get("userName") or "Participant"
+    first_name = user_name.split()[0] if user_name else "User"
+    date_str = datetime.now().strftime("%Y%m%d")
+    filename = f"NeuroVoice_Screening_{first_name}_{date_str}.pdf"
+
     patient_data = {
-        "name": "Rameshwar Patel",
-        "uhid": "JMC-2026-8812",
-        "location": "Jabalpur Rural",
+        "name": user_name,
+        "uhid": f"NV-{screening.get('id', report_id)[-6:].upper()}",
+        "location": "Regional Health Screening",
     }
 
     pdf_bytes = ReportLabPDFGenerator.generate_report_pdf(screening, patient_data)
@@ -46,6 +52,6 @@ async def generate_pdf_report(report_id: str):
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=NeuroVoice_Report_{report_id}.pdf"
+            "Content-Disposition": f"attachment; filename={filename}"
         },
     )

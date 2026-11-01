@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Clock,
@@ -13,302 +13,365 @@ import {
   GitCompare,
   TrendingDown,
   CheckCircle2,
+  AlertCircle,
+  FileText,
+  Filter,
 } from 'lucide-react'
-import { useTheme } from '@/components/ThemeProvider'
 
-export default function PatientHistoryPage() {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
+interface ScreeningSession {
+  id: string
+  date: string
+  screeningId: string
+  overallBand: string
+  badgeColor: string
+  pdBand: string
+  adBand: string
+  dysarthriaBand: string
+  postStrokeBand: string
+  snrDb: number
+  duration: number
+  flags: string[]
+  details: string
+}
 
-  const [dateA, setDateA] = useState('28 Oct 2026')
-  const [dateB, setDateB] = useState('14 Sep 2026')
-  const [expandedCard, setExpandedCard] = useState<string | null>('sess-1')
+export default function ReportsHistoryPage() {
+  const [activeTab, setActiveTab] = useState<'reports' | 'timeline' | 'compare'>('reports')
+  const [expandedCard, setExpandedCard] = useState<string | null>('scr-01')
 
-  const sessions = [
+  const sessions: ScreeningSession[] = [
     {
-      id: 'sess-1',
+      id: 'scr-01',
       date: '28 Oct 2026',
-      uhid: 'JMC-2026-8812',
-      riskTier: 'Low Risk',
-      color: '#10B981',
-      pd: 12,
-      ad: 18,
-      dysarthria: 9,
-      postStroke: 8,
-      flags: ['No overt tremors', 'Optimal vocal stability'],
-      details: 'Patient completed 30s Hindi test. Micro-jitter was 0.38% (well within normal limits < 1.04%). Shimmer was 1.82%.',
+      screeningId: 'NV-2026-8812',
+      overallBand: 'Low — no concern detected',
+      badgeColor: 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30',
+      pdBand: 'Low — no concern detected',
+      adBand: 'Low — no concern detected',
+      dysarthriaBand: 'Low — no concern detected',
+      postStrokeBand: 'Low — no concern detected',
+      snrDb: 26.4,
+      duration: 31.2,
+      flags: ['Optimal signal-to-noise ratio', 'Normal vocal fold stability'],
+      details: 'Patient completed Hindi vowel & reading tasks. Micro-jitter was 0.38% (well within typical limits < 1.04%). Shimmer was 1.82%.',
     },
     {
-      id: 'sess-2',
+      id: 'scr-02',
       date: '14 Oct 2026',
-      uhid: 'JMC-2026-8740',
-      riskTier: 'Low Risk',
-      color: '#10B981',
-      pd: 15,
-      ad: 20,
-      dysarthria: 11,
-      postStroke: 10,
-      flags: ['Mild conversational pause'],
-      details: 'Slight hesitation during phoneme transition. Language retrievability remains consistent with age cohort.',
+      screeningId: 'NV-2026-8740',
+      overallBand: 'Low — no concern detected',
+      badgeColor: 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30',
+      pdBand: 'Low — no concern detected',
+      adBand: 'Low — no concern detected',
+      dysarthriaBand: 'Low — no concern detected',
+      postStrokeBand: 'Low — no concern detected',
+      snrDb: 22.8,
+      duration: 30.5,
+      flags: ['Mild conversational pause latency'],
+      details: 'Slight hesitation during phoneme transitions. Language retrievability consistent with demographic reference cohort.',
     },
     {
-      id: 'sess-3',
+      id: 'scr-03',
       date: '28 Sep 2026',
-      uhid: 'JMC-2026-8621',
-      riskTier: 'Low Risk',
-      color: '#10B981',
-      pd: 17,
-      ad: 21,
-      dysarthria: 13,
-      postStroke: 10,
+      screeningId: 'NV-2026-8621',
+      overallBand: 'Low — no concern detected',
+      badgeColor: 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30',
+      pdBand: 'Low — no concern detected',
+      adBand: 'Low — no concern detected',
+      dysarthriaBand: 'Low — no concern detected',
+      postStrokeBand: 'Low — no concern detected',
+      snrDb: 24.1,
+      duration: 29.8,
       flags: ['Trace vocal fatigue'],
-      details: 'Evaluated post-therapy session. Good glottal closure and preserved speech envelope.',
+      details: 'Evaluated post-vocal task. Preserved fundamental frequency stability and complete glottal closure.',
     },
     {
-      id: 'sess-4',
+      id: 'scr-04',
       date: '14 Sep 2026',
-      uhid: 'JMC-2026-8490',
-      riskTier: 'Moderate Risk',
-      color: '#F59E0B',
-      pd: 26,
-      ad: 28,
-      dysarthria: 19,
-      postStroke: 15,
-      flags: ['Subclinical micro-jitter detected', 'Mild vocal tremor'],
-      details: 'Pre-treatment baseline. Patient had slight hand rigidity; vocal perturbation matched early subclinical tremor pattern.',
+      screeningId: 'NV-2026-8490',
+      overallBand: 'Moderate — worth monitoring',
+      badgeColor: 'text-[var(--warning)] bg-[var(--warning)]/10 border-[var(--warning)]/30',
+      pdBand: 'Moderate — worth monitoring',
+      adBand: 'Low — no concern detected',
+      dysarthriaBand: 'Low — no concern detected',
+      postStrokeBand: 'Low — no concern detected',
+      snrDb: 21.5,
+      duration: 32.0,
+      flags: ['Subclinical micro-jitter detected', 'Mild amplitude fluctuation'],
+      details: 'Baseline intake screening. Initial vocal perturbation showed slight micro-tremor in sustained vowel phonation.',
     },
   ]
 
-  // Comparative biomarkers for Feature 13 (Date A vs Date B)
+  const [dateA, setDateA] = useState(sessions[0].id)
+  const [dateB, setDateB] = useState(sessions[3].id)
+
+  const sessionA = sessions.find((s) => s.id === dateA) || sessions[0]
+  const sessionB = sessions.find((s) => s.id === dateB) || sessions[3]
+
   const comparisonBiomarkers = [
-    { name: 'Vocal Micro-Jitter (%)', valA: '0.38% (Normal)', valB: '0.94% (Elevated)', improved: true },
-    { name: 'Shimmer APQ-5 (%)', valA: '1.82% (Normal)', valB: '3.45% (Borderline)', improved: true },
-    { name: 'Harmonic-to-Noise (HNR)', valA: '24.1 dB', valB: '19.8 dB', improved: true },
-    { name: 'Pitch Period Entropy', valA: '0.19 (Stable)', valB: '0.34 (Fluctuating)', improved: true },
-    { name: 'Linguistic Pause Ratio', valA: '0.19', valB: '0.29', improved: true },
+    { name: 'Vocal Micro-Jitter (%)', valA: '0.38% (Typical)', valB: '0.94% (Borderline)', improved: true },
+    { name: 'Shimmer APQ-5 (%)', valA: '1.82% (Typical)', valB: '3.45% (Elevated)', improved: true },
+    { name: 'Harmonics-to-Noise (HNR)', valA: '24.1 dB', valB: '19.8 dB', improved: true },
+    { name: 'Pitch Period Entropy (PPE)', valA: '0.19 (Stable)', valB: '0.34 (Fluctuating)', improved: true },
+    { name: 'Speech Pause Ratio', valA: '0.18', valB: '0.28', improved: true },
   ]
 
   const downloadPDF = (id: string) => {
-    window.open(`http://localhost:8000/api/reports/${id}/pdf`, '_blank')
+    window.open(`/api/reports/${id}/pdf`, '_blank')
   }
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#1F2937]">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[var(--border)]">
         <div>
-          <span className="text-xs font-mono font-semibold text-cyan-400 uppercase tracking-widest block mb-1">
-            FEATURE 8 & 13 · CLINICAL TIMELINE & COMPARISON
+          <span className="text-xs font-mono font-semibold text-[var(--accent)] uppercase tracking-wider block mb-1">
+            Vocal Screening History & Records
           </span>
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-white">
-            Patient Screening History
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-[var(--text)]">
+            My Screening Records
           </h1>
-          <p className="text-xs text-gray-400 mt-1">
-            Longitudinal records and before/after therapy comparison for Rameshwar Patel
+          <p className="text-xs text-[var(--muted)] mt-1">
+            Review past voice screenings, track longitudinal acoustic changes, and compare before/after therapy sessions.
           </p>
         </div>
 
         <Link
           href="/dashboard/scan"
-          className="py-2.5 px-5 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+          className="btn-primary text-xs font-semibold py-2.5 px-5 rounded-xl shadow-sm flex items-center gap-1.5"
         >
-          + Record New Session
+          <Activity size={15} />
+          <span>New Voice Screening</span>
         </Link>
       </div>
 
-      {/* TOP OF PAGE: TREND COMPARISON TOOL (FEATURE 13) */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-[#111827] to-[#111827] border border-indigo-500/30 shadow-lg">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-[#6366F1] flex items-center justify-center border border-indigo-500/30">
-              <GitCompare size={20} />
-            </div>
-            <div>
-              <h3 className="font-display font-bold text-lg text-white">
-                Before / After Treatment Comparison (Feature 13)
-              </h3>
-              <p className="text-xs text-gray-400">
-                Compare voice biomarkers across any two clinical milestone sessions
-              </p>
-            </div>
-          </div>
-
-          {/* Date Selector Pickers */}
-          <div className="flex items-center gap-3 text-xs font-mono">
-            <div>
-              <span className="text-gray-400 block text-[10px] mb-1">Session A (Recent)</span>
-              <select
-                value={dateA}
-                onChange={(e) => setDateA(e.target.value)}
-                className="bg-[#0A0F1E] border border-[#1F2937] text-cyan-300 rounded-lg px-3 py-1.5 outline-none font-bold"
-              >
-                <option value="28 Oct 2026">28 Oct 2026 (Recent)</option>
-                <option value="14 Oct 2026">14 Oct 2026</option>
-                <option value="28 Sep 2026">28 Sep 2026</option>
-              </select>
-            </div>
-
-            <span className="text-gray-500 mt-4">vs</span>
-
-            <div>
-              <span className="text-gray-400 block text-[10px] mb-1">Session B (Baseline)</span>
-              <select
-                value={dateB}
-                onChange={(e) => setDateB(e.target.value)}
-                className="bg-[#0A0F1E] border border-[#1F2937] text-amber-300 rounded-lg px-3 py-1.5 outline-none font-bold"
-              >
-                <option value="14 Sep 2026">14 Sep 2026 (Pre-Therapy)</option>
-                <option value="28 Sep 2026">28 Sep 2026</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Side-by-Side Comparison Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead>
-              <tr className="border-b border-[#1F2937] text-gray-400">
-                <th className="py-2.5 px-3">Biomarker Parameter</th>
-                <th className="py-2.5 px-3 text-cyan-400">Session A: {dateA}</th>
-                <th className="py-2.5 px-3 text-amber-400">Session B: {dateB}</th>
-                <th className="py-2.5 px-3 text-right">Clinical Progress</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1F2937]">
-              {comparisonBiomarkers.map((b) => (
-                <tr key={b.name} className="hover:bg-white/5">
-                  <td className="py-3 px-3 font-medium text-white">{b.name}</td>
-                  <td className="py-3 px-3 text-cyan-300 font-bold">{b.valA}</td>
-                  <td className="py-3 px-3 text-amber-300 font-bold">{b.valB}</td>
-                  <td className="py-3 px-3 text-right">
-                    <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold">
-                      <TrendingDown size={12} />
-                      <span>Improved Therapy Response</span>
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* 3 Unified Tabs: Reports | Timeline | Compare */}
+      <div className="flex items-center gap-2 border-b border-[var(--border)] pb-px">
+        <button
+          onClick={() => setActiveTab('reports')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
+            activeTab === 'reports'
+              ? 'border-[var(--primary)] text-[var(--primary)] bg-[var(--surface)]'
+              : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          <FileText size={15} />
+          <span>Reports ({sessions.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('timeline')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
+            activeTab === 'timeline'
+              ? 'border-[var(--primary)] text-[var(--primary)] bg-[var(--surface)]'
+              : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          <Calendar size={15} />
+          <span>Timeline View</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('compare')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
+            activeTab === 'compare'
+              ? 'border-[var(--primary)] text-[var(--primary)] bg-[var(--surface)]'
+              : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          <GitCompare size={15} />
+          <span>Compare Sessions</span>
+        </button>
       </div>
 
-      {/* VERTICAL TIMELINE OF SESSIONS */}
-      <div className="space-y-6">
-        <h3 className="font-display font-bold text-xl text-white">Historical Session Timeline</h3>
-
-        <div className="relative pl-6 sm:pl-8 border-l-2 border-[#1F2937] space-y-8">
-          {sessions.map((sess) => {
-            const isExpanded = expandedCard === sess.id
-
-            return (
-              <div key={sess.id} className="relative group">
-                {/* Timeline node */}
-                <span
-                  className="w-4 h-4 rounded-full border-2 border-[#0A0F1E] absolute -left-[31px] sm:-left-[39px] top-5"
-                  style={{ background: sess.color }}
-                />
-
-                {/* Session Card */}
-                <div
-                  className="rounded-2xl p-6 bg-[#111827] border border-[#1F2937] transition-all hover:border-gray-600 shadow-sm"
-                >
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-white">{sess.date}</span>
-                      <span className="text-xs font-mono text-gray-500">UHID #{sess.uhid}</span>
-                      <span
-                        className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full"
-                        style={{ color: sess.color, background: `${sess.color}15` }}
-                      >
-                        {sess.riskTier}
-                      </span>
+      {/* TAB 1: REPORTS */}
+      {activeTab === 'reports' && (
+        <div className="space-y-4">
+          {sessions.map((sess) => (
+            <div
+              key={sess.id}
+              className="p-5 sm:p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:border-[var(--primary)] transition-all space-y-4"
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[var(--primary)] flex items-center justify-center">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-display font-bold text-sm text-[var(--text)]">{sess.date}</span>
+                      <span className="font-mono text-xs text-[var(--muted)]">({sess.screeningId})</span>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => downloadPDF(sess.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0A0F1E] border border-[#1F2937] text-gray-300 hover:text-white text-xs font-mono"
-                      >
-                        <FileDown size={13} />
-                        <span>PDF Report</span>
-                      </button>
-
-                      <button
-                        onClick={() => setExpandedCard(isExpanded ? null : sess.id)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-white"
-                      >
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </button>
+                    <div className="text-xs text-[var(--muted)] mt-0.5">
+                      Duration: {sess.duration}s · Quality (SNR): {sess.snrDb} dB
                     </div>
                   </div>
+                </div>
 
-                  {/* 4 Mini Progress Bars */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-3 border-t border-b border-[#1F2937] text-xs font-mono">
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-gray-400">Parkinson's</span>
-                        <span className="text-white font-bold">{sess.pd}%</span>
-                      </div>
-                      <div className="w-full bg-[#0A0F1E] h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-[#6366F1] h-full" style={{ width: `${sess.pd}%` }} />
-                      </div>
-                    </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${sess.badgeColor}`}>
+                    {sess.overallBand}
+                  </span>
 
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-gray-400">Alzheimer's</span>
-                        <span className="text-white font-bold">{sess.ad}%</span>
-                      </div>
-                      <div className="w-full bg-[#0A0F1E] h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-[#8B5CF6] h-full" style={{ width: `${sess.ad}%` }} />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-gray-400">Dysarthria</span>
-                        <span className="text-white font-bold">{sess.dysarthria}%</span>
-                      </div>
-                      <div className="w-full bg-[#0A0F1E] h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-[#22D3EE] h-full" style={{ width: `${sess.dysarthria}%` }} />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-gray-400">Post-Stroke</span>
-                        <span className="text-white font-bold">{sess.postStroke}%</span>
-                      </div>
-                      <div className="w-full bg-[#0A0F1E] h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-[#14B8A6] h-full" style={{ width: `${sess.postStroke}%` }} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expanded Report Details */}
-                  {isExpanded && (
-                    <div className="pt-4 mt-2 space-y-2 text-xs">
-                      <p className="text-gray-300 leading-relaxed">{sess.details}</p>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {sess.flags.map((f) => (
-                          <span
-                            key={f}
-                            className="px-2.5 py-1 rounded bg-[#0A0F1E] text-gray-400 font-mono border border-[#1F2937]"
-                          >
-                            ✓ {f}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => downloadPDF(sess.id)}
+                    className="btn-ghost text-xs py-1.5 px-3 rounded-lg flex items-center gap-1.5"
+                    title="Download 5-page clinical PDF report"
+                  >
+                    <FileDown size={14} />
+                    <span>Download PDF</span>
+                  </button>
                 </div>
               </div>
-            )
-          })}
+
+              {/* Conditions summary grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-[var(--border)] text-xs">
+                <div>
+                  <span className="text-[var(--muted)] block text-[11px]">Parkinson's</span>
+                  <span className="font-semibold text-[var(--text)]">{sess.pdBand.split('—')[0]}</span>
+                </div>
+                <div>
+                  <span className="text-[var(--muted)] block text-[11px]">Alzheimer's</span>
+                  <span className="font-semibold text-[var(--text)]">{sess.adBand.split('—')[0]}</span>
+                </div>
+                <div>
+                  <span className="text-[var(--muted)] block text-[11px]">Dysarthria</span>
+                  <span className="font-semibold text-[var(--text)]">{sess.dysarthriaBand.split('—')[0]}</span>
+                </div>
+                <div>
+                  <span className="text-[var(--muted)] block text-[11px]">Post-Stroke</span>
+                  <span className="font-semibold text-[var(--text)]">{sess.postStrokeBand.split('—')[0]}</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-[var(--muted)] leading-relaxed italic bg-[var(--surface-2)] p-3 rounded-xl border border-[var(--border)]">
+                "{sess.details}"
+              </p>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
+
+      {/* TAB 2: TIMELINE VIEW */}
+      {activeTab === 'timeline' && (
+        <div className="relative pl-6 sm:pl-8 space-y-8 before:absolute before:left-2.5 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[var(--border)]">
+          {sessions.map((sess) => (
+            <div key={sess.id} className="relative space-y-2">
+              {/* Timeline marker */}
+              <div className="absolute -left-6 sm:-left-8 top-1.5 w-5 h-5 rounded-full bg-[var(--surface)] border-2 border-[var(--primary)] flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]" />
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-display font-bold text-sm text-[var(--text)]">{sess.date}</span>
+                    <span className="text-xs text-[var(--muted)] font-mono">ID: {sess.screeningId}</span>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${sess.badgeColor}`}>
+                    {sess.overallBand}
+                  </span>
+                </div>
+
+                <p className="text-xs text-[var(--muted)] leading-relaxed">{sess.details}</p>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {sess.flags.map((flag, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded-md text-[11px] bg-[var(--surface-2)] text-[var(--muted)] border border-[var(--border)]"
+                    >
+                      {flag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TAB 3: COMPARE SESSIONS */}
+      {activeTab === 'compare' && (
+        <div className="p-6 sm:p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[var(--surface-2)] text-[var(--primary)] flex items-center justify-center border border-[var(--border)]">
+                <GitCompare size={20} />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-base text-[var(--text)]">
+                  Longitudinal Voice Biomarker Comparison
+                </h3>
+                <p className="text-xs text-[var(--muted)]">
+                  Select any two screening sessions to evaluate treatment or rehabilitation progress.
+                </p>
+              </div>
+            </div>
+
+            {/* Pickers */}
+            <div className="flex items-center gap-3 text-xs font-mono">
+              <div>
+                <span className="text-[var(--muted)] block text-[10px] mb-1">Session A (Recent)</span>
+                <select
+                  value={dateA}
+                  onChange={(e) => setDateA(e.target.value)}
+                  className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] rounded-lg px-3 py-1.5 outline-none font-semibold text-xs"
+                >
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.date} ({s.screeningId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <span className="text-[var(--muted)] mt-4">vs</span>
+
+              <div>
+                <span className="text-[var(--muted)] block text-[10px] mb-1">Session B (Earlier Baseline)</span>
+                <select
+                  value={dateB}
+                  onChange={(e) => setDateB(e.target.value)}
+                  className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] rounded-lg px-3 py-1.5 outline-none font-semibold text-xs"
+                >
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.date} ({s.screeningId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Side-by-side Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className="border-b border-[var(--border)] text-[var(--muted)]">
+                  <th className="py-2.5 px-3">Acoustic Biomarker</th>
+                  <th className="py-2.5 px-3 text-[var(--primary)]">Session A ({sessionA.date})</th>
+                  <th className="py-2.5 px-3 text-[var(--accent)]">Session B ({sessionB.date})</th>
+                  <th className="py-2.5 px-3 text-right">Progress Direction</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {comparisonBiomarkers.map((b) => (
+                  <tr key={b.name} className="hover:bg-[var(--surface-2)] transition-colors">
+                    <td className="py-3 px-3 font-medium text-[var(--text)]">{b.name}</td>
+                    <td className="py-3 px-3 text-[var(--primary)] font-bold">{b.valA}</td>
+                    <td className="py-3 px-3 text-[var(--accent)] font-bold">{b.valB}</td>
+                    <td className="py-3 px-3 text-right">
+                      <span className="inline-flex items-center gap-1 text-[var(--success)] bg-[var(--success)]/10 px-2 py-0.5 rounded font-semibold text-[11px]">
+                        <TrendingDown size={12} />
+                        <span>Favorable Response</span>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
