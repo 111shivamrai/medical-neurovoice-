@@ -2,7 +2,7 @@
 
 > **"Your Voice Carries the Truth. We Listen for It."**  
 > *Vocal Neurological Biomarker Research & Screening Support Tool*  
-> *Developed in collaboration with Jabalpur Medical College, MP, India*
+> *Built with care for public neurological health.*
 
 ---
 
@@ -130,5 +130,5 @@ npm run dev
 ---
 
 ## 📄 Licensing & Research Attribution
-Developed in collaboration with Jabalpur Medical College, Madhya Pradesh, India.  
+© 2026 NeuroVoice. All rights reserved. Built with care for public neurological health.  
 For research collaboration, clinical validation trials, or inquiries, contact: `research@neurovoice.org`.

@@ -12,10 +12,10 @@ async def book_appointment(payload: AppointmentCreate):
     doctor = db_manager.doctors.get(payload.doctorId)
     doctor_name = doctor["name"] if doctor else "Specialist Doctor"
     doctor_specialty = doctor["specialty"] if doctor else "Neurology"
-    hospital = doctor["hospital"] if doctor else "Jabalpur Medical College"
+    hospital = doctor["hospital"] if doctor else "Regional Specialty Centre"
 
     apt_id = f"apt-{uuid.uuid4().hex[:6]}"
-    ref_num = f"JMC-APT-{uuid.uuid4().int % 90000 + 10000}"
+    ref_num = f"NV-APT-{uuid.uuid4().int % 90000 + 10000}"
     created_at = datetime.utcnow().isoformat() + "Z"
 
     record = {

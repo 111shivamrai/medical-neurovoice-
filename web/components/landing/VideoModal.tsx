@@ -48,7 +48,7 @@ export function VideoModal({ isOpen, onClose }: VideoModalProps) {
                   Clinical Walkthrough: 30-Second Acoustic Analysis
                 </h3>
                 <p className="text-xs text-gray-400">
-                  Demonstration Protocol · Jabalpur Medical College Neurological Screening
+                  Demonstration Protocol · NeuroVoice Vocal Neurological Screening
                 </p>
               </div>
             </div>

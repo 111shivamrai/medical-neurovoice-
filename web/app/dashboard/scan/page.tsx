@@ -27,10 +27,12 @@ import {
 } from 'lucide-react'
 import { BRAND } from '@/lib/brand'
 import { getLocalUser } from '@/lib/auth'
+import { downloadScreeningPdf } from '@/lib/downloadPdf'
 
 export default function NewScreeningPage() {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
   const [language, setLanguage] = useState<'hi' | 'en'>('hi')
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
 
   // Step 2: Quality & Live Canvas
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -881,15 +883,20 @@ export default function NewScreeningPage() {
             </div>
 
             <div className="space-y-2.5 pt-2">
-              <a
-                href={`/api/reports/${reportId}/pdf`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-primary w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm"
+              <button
+                type="button"
+                disabled={isDownloadingPdf}
+                onClick={async () => {
+                  setIsDownloadingPdf(true)
+                  const localUser = getLocalUser()
+                  await downloadScreeningPdf(reportId, localUser?.displayName || 'Participant')
+                  setIsDownloadingPdf(false)
+                }}
+                className="btn-primary w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
               >
-                <FileDown size={16} />
-                <span>Download Voice Report (PDF)</span>
-              </a>
+                <FileDown size={16} className={isDownloadingPdf ? 'animate-bounce' : ''} />
+                <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download Voice Report (PDF)'}</span>
+              </button>
 
               <Link
                 href="/dashboard/care"

@@ -71,6 +71,13 @@ export default function DashboardHomePage() {
 
   const lastScreeningText = getLastScreeningDays()
 
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
+
   // Trend data computed from real screenings
   const trendData = screenings
     .slice(0, 10)
@@ -88,13 +95,20 @@ export default function DashboardHomePage() {
       {/* Top Banner / Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
         <div className="space-y-1.5">
-          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--accent)]">
-            Acoustic Screening Command Center
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--accent)]">
+              Acoustic Screening Command Center
+            </span>
+            {lastScreeningText && (
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)] border border-[var(--border)]">
+                Last screening: {lastScreeningText}
+              </span>
+            )}
+          </div>
           <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-[var(--text)] tracking-tight">
             {isFirstTime
               ? `Welcome, ${userName}. Let's take your first voice screening.`
-              : `Welcome back, ${userName}.`}
+              : `${getGreeting()}, ${userName}.`}
           </h1>
           <p className="text-xs sm:text-sm text-[var(--muted)] max-w-xl leading-relaxed">
             {isFirstTime

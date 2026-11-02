@@ -205,7 +205,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-4xl flex items-center justify-between mb-8">
         <Logo size="md" />
         <span className="text-xs font-mono text-gray-400">
-          Clinical Setup · Jabalpur Medical College
+          Clinical Setup · NeuroVoice
         </span>
       </div>
 
@@ -413,7 +413,7 @@ export default function OnboardingPage() {
                   Your First Voice Test
                 </h2>
                 <p className="text-xs sm:text-sm text-gray-400 mt-1 max-w-md mx-auto">
-                  A 10-second calibration to ensure your microphone SNR and loudness meet Jabalpur Medical College clinical standards.
+                  A 10-second calibration to ensure your microphone SNR and loudness meet NeuroVoice clinical acoustic standards.
                 </p>
               </div>
 
@@ -541,7 +541,7 @@ export default function OnboardingPage() {
               </h2>
               <p className="text-sm text-gray-300 max-w-md mx-auto leading-relaxed mb-8">
                 Welcome to NeuroVoice. Your clinical profile is active and your microphone calibration conforms to
-                Jabalpur Medical College neurological screening benchmarks.
+                NeuroVoice neurological screening benchmarks.
               </p>
 
               {/* Status Checklist */}
@@ -578,7 +578,7 @@ export default function OnboardingPage() {
 
       {/* Footer info */}
       <div className="w-full max-w-4xl text-center text-xs font-mono text-gray-500 pt-6">
-        NeuroVoice · Jabalpur Medical College Neurological AI Portal
+        NeuroVoice · Vocal Neurological Biomarker Screening Platform
       </div>
     </div>
   )

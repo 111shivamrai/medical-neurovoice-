@@ -88,7 +88,7 @@ export default function AdminPanelPage() {
               <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30">
                 ROLE-GATED (ADMIN ONLY)
               </span>
-              <span className="text-xs font-mono text-gray-400">Jabalpur Medical College Core Node</span>
+              <span className="text-xs font-mono text-gray-400">NeuroVoice Regional Node</span>
             </div>
             <h1 className="font-display font-extrabold text-3xl text-white mt-1">
               Admin Surveillance Control Centre

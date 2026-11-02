@@ -17,6 +17,8 @@ import {
   FileText,
   Filter,
 } from 'lucide-react'
+import { downloadScreeningPdf } from '@/lib/downloadPdf'
+import { getLocalUser } from '@/lib/auth'
 
 interface ScreeningSession {
   id: string
@@ -115,8 +117,9 @@ export default function ReportsHistoryPage() {
     { name: 'Speech Pause Ratio', valA: '0.18', valB: '0.28', improved: true },
   ]
 
-  const downloadPDF = (id: string) => {
-    window.open(`/api/reports/${id}/pdf`, '_blank')
+  const downloadPDF = async (id: string) => {
+    const localUser = getLocalUser()
+    await downloadScreeningPdf(id, localUser?.displayName || 'Participant')
   }
 
   return (

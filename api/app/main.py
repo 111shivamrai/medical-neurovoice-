@@ -12,8 +12,8 @@ from app.routes.doctors import router as doctors_router
 from app.routes.admin import router as admin_router
 
 app = FastAPI(
-    title="NeuroVoice Clinical AI API",
-    description="Acoustic biomarker screening pipeline developed for Jabalpur Medical College, Madhya Pradesh, India.",
+    title="NeuroVoice API",
+    description="Vocal neurological biomarker research and screening support pipeline.",
     version="2.4.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -39,7 +39,7 @@ async def health_check():
         "status": "healthy",
         "service": "NeuroVoice FastAPI AI Backend",
         "version": "2.4.0",
-        "institution": "Jabalpur Medical College, MP, India",
+        "initiative": "Public Neurological Screening Support",
         "environment": ENVIRONMENT,
         "databaseConnected": db_manager.is_connected,
     }

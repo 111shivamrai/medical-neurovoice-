@@ -14,7 +14,7 @@ class AudioProcessor:
         Returns:
             snr_db: Signal-to-Noise Ratio in dB
             quality_score: 0 to 100 quality score
-            is_acceptable: True if meets Jabalpur Medical College threshold
+            is_acceptable: True if meets clinical acoustic threshold (>= 10 dB SNR)
         """
         # Baseline SNR evaluation based on acoustic energy distribution
         byte_len = len(audio_bytes)

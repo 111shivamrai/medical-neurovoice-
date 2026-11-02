@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Response
 from app.services.database import db_manager
 from app.services.pdf_generator import ReportLabPDFGenerator
@@ -20,15 +21,22 @@ async def get_user_reports(uid: str):
     ]
     return results
 
-@router.post("/reports/{report_id}/pdf")
+@router.api_route("/reports/{report_id}/pdf", methods=["GET", "POST"])
 async def generate_pdf_report(report_id: str):
     """
     Generates and returns the official 5-page ReportLab clinical PDF stream.
+    Supports both GET and POST requests.
     """
     screening = db_manager.screenings.get(report_id)
     if not screening:
         # Fallback to demo report if arbitrary ID provided
-        screening = list(db_manager.screenings.values())[0]
+        screening = list(db_manager.screenings.values())[0] if db_manager.screenings else {
+            "id": report_id,
+            "overallRisk": "Low",
+            "scores": {"pd": 12.4, "ad": 14.8, "dysarthria": 8.2, "postStroke": 9.5},
+            "features": {"jitter": 0.42, "shimmer": 2.15, "hnr": 24.2, "pauseRatio": 0.18},
+            "userName": "Participant",
+        }
 
     # Format patient name and clean filename
     user_name = screening.get("userName") or "Participant"
@@ -52,6 +60,8 @@ async def generate_pdf_report(report_id: str):
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}"
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )
+

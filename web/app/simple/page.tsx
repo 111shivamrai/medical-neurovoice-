@@ -17,8 +17,10 @@ import {
   Building2,
   Phone,
   FileText,
+  FileDown,
   ChevronRight,
 } from 'lucide-react'
+import { downloadScreeningPdf } from '@/lib/downloadPdf'
 
 export default function CommunityHealthWorkerModePage() {
   const [lang, setLang] = useState<'hi' | 'en'>('hi')
@@ -436,6 +438,15 @@ export default function CommunityHealthWorkerModePage() {
 
             {/* Actions: Share WhatsApp Slip + Record Again */}
             <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => downloadScreeningPdf(screeningId, personName)}
+                className="btn-primary w-full py-3.5 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm"
+              >
+                <FileDown size={17} />
+                <span>{lang === 'hi' ? 'पीडीएफ रिपोर्ट डाउनलोड करें' : 'Download Clinical PDF Report'}</span>
+              </button>
+
               <button
                 onClick={buildWhatsAppSlip}
                 className="w-full py-4 rounded-2xl bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-transform active:scale-98"
