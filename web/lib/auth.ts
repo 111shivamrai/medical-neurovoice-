@@ -23,9 +23,8 @@ const AUTH_TOKEN_KEY = 'neurovoice-auth-token'
 const ROLE_KEY = 'neurovoice-role'
 
 export function isDemoMode(): boolean {
-  if (typeof window === 'undefined') return true
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
-  return !apiKey || apiKey.startsWith('AIzaSyDemo') || apiKey.length < 20
+  return !apiKey || apiKey.trim() === '' || apiKey.startsWith('AIzaSyDemo') || apiKey.includes('Placeholder') || apiKey.length < 20
 }
 
 export function getLocalUser(): UserSession | null {

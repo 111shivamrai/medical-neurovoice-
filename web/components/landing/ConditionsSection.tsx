@@ -2,80 +2,88 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { Activity, Brain, Volume2, Sparkles, Info, ShieldCheck } from 'lucide-react'
+import { Check, X, ArrowRight, Sparkles, Volume2, Info } from 'lucide-react'
 
 type HotspotId = 'brain' | 'larynx' | 'articulators' | null
 
 export function ConditionsSection() {
   const [activeHotspot, setActiveHotspot] = useState<HotspotId>(null)
+  const [visitedHotspots, setVisitedHotspots] = useState<Set<string>>(new Set())
 
   const hotspotDetails = {
     brain: {
-      title: '1. Brain & Central Motor Cortex',
-      plainText:
-        'Coordinates speech timing, lexical recall, and laryngeal rhythm. Dopamine depletion or cortical atrophy alters speech tempo and micro-stability.',
+      number: 1,
+      title: 'Brain & Cognitive Control',
+      subtitle: 'Coordinates speech timing, lexical search, and vocal rhythm',
+      description:
+        'The motor cortex and basal ganglia govern subconscious vocal rhythm and muscle timing. Neurodegenerative changes in dopamine or cortical signaling create subtle hesitation pauses, micro-tremors, and cadence shifts before gross motor symptoms appear.',
       conditions: "Parkinson's Disease & Alzheimer's Disease",
-      subsystem: 'Central Motor Planning & Neuromuscular Signaling',
+      voiceImpact: 'Cadence hesitation, involuntary pitch perturbation, and reduced vocal modulation.',
     },
     larynx: {
-      title: '2. Larynx & Vocal Folds (The Voice Box)',
-      plainText:
-        'Vocal cords vibrate hundreds of times per second. Asymmetry or incomplete adduction results in breathiness, hoarseness, and pitch irregularity.',
-      conditions: 'Post-Stroke Impairment & Vocal Glottal Dysphonia',
-      subsystem: 'Subglottic Pressure & Phonation Mechanics',
+      number: 2,
+      title: 'Vocal Folds & Larynx',
+      subtitle: 'Generates glottal vibration and acoustic harmonics',
+      description:
+        'Vocal cords oscillate over 100 to 250 times per second during speech. Neuromuscular weakness or unilateral vocal fold paresis allows turbulent air to escape, reducing harmonic clarity and creating cycle-to-cycle amplitude instability.',
+      conditions: 'Post-Stroke Changes & Parkinsonian Hypophonia',
+      voiceImpact: 'Breathy air leakage, reduced harmonic-to-noise ratio (HNR), and decreased volume.',
     },
     articulators: {
-      title: '3. Oral Articulators (Tongue, Lips & Palate)',
-      plainText:
-        'Over 100 fine muscles shape acoustic sound waves into intelligible consonants and vowels. Weakness causes slurred consonants and distorted vowel formant triangles.',
-      conditions: 'Dysarthria & Cerebellar Motor Speech Disorder',
-      subsystem: 'Articulatory Kinematics & Resonant Cavities',
+      number: 3,
+      title: 'Speech Muscles & Tongue',
+      subtitle: 'Shapes resonant acoustic waves into crisp phonemes',
+      description:
+        'Over 100 coordinated muscles in the lips, tongue, and soft palate shape acoustic frequencies into distinct vowels and consonants. Muscle weakness causes formant centralization, making vowel sounds blur together and consonant releases sound slurred.',
+      conditions: 'Dysarthria & Post-Stroke Speech Changes',
+      voiceImpact: 'Slurred consonant edges, compressed vowel formant triangle, and reduced phonetic range.',
     },
+  }
+
+  const handleHotspotClick = (id: 'brain' | 'larynx' | 'articulators') => {
+    setActiveHotspot(id)
+    setVisitedHotspots((prev) => new Set(prev).add(id))
   }
 
   const conditions = [
     {
       id: 'pd',
-      name: "Parkinson's Disease (PD)",
-      hotspot: 'brain',
-      badge: 'Motor Speech Subsystem',
-      voiceChanges: 'Vocal cord micro-tremor, reduced vocal loudness (hypophonia), and pitch monotony.',
-      keyBiomarkers: ['Jitter (pitch instability)', 'Shimmer (loudness variation)', 'HNR (< 20 dB)', 'RPDE Chaos'],
-      plainSummary: 'Subtle muscle rigidity alters voice box stability months before hand tremors occur.',
+      heading: "Parkinson's Disease",
+      plainDescription:
+        'How the voice changes: Vocal cords develop subtle tremors, volume drops without the speaker noticing, and pitch becomes monotone.',
+      measurements: ['Voice steadiness (Jitter)', 'Volume stability (Shimmer)', 'Clarity (HNR)'],
+      link: '/about/method#pd',
     },
     {
       id: 'ad',
-      name: "Alzheimer's Disease (AD)",
-      hotspot: 'brain',
-      badge: 'Cognitive-Acoustic Rhythm',
-      voiceChanges: 'Hesitation pauses, slower speech tempo, and flat pitch during lexical retrieval.',
-      keyBiomarkers: ['Pause Time Ratio (> 0.28)', 'Speech Cadence (< 3.5 syl/s)', 'Pitch Variance', 'Spectral Centroid'],
-      plainSummary: 'Micro-delays in sentence construction manifest as distinct acoustic pause signatures.',
+      heading: "Alzheimer's Disease",
+      plainDescription:
+        'How the voice changes: Pauses become longer as the brain searches for words. Speech pace slows, and sentence flow becomes fragmented.',
+      measurements: ['Pause duration', 'Speaking speed', 'Word flow consistency'],
+      link: '/about/method#ad',
     },
     {
       id: 'dysarthria',
-      name: 'Dysarthria',
-      hotspot: 'articulators',
-      badge: 'Neuromuscular Articulation',
-      voiceChanges: 'Slurred consonants, imprecise vowel articulation, and breathy or strained delivery.',
-      keyBiomarkers: ['Formant Centralization (F1/F2 ratio)', 'Zero-Crossing Variance', 'Vowel Space Area', 'Shimmer APQ5'],
-      plainSummary: 'Weakened tongue and lip muscles fail to reach full phonetic resonance positions.',
+      heading: 'Dysarthria — Speech Muscle Weakness',
+      plainDescription:
+        'How the voice changes: Tongue, lip, and throat muscles weaken, causing slurred consonants and difficulty forming crisp vowel sounds.',
+      measurements: ['Vowel clarity', 'Consonant sharpness', 'Muscle coordination'],
+      link: '/about/method#dysarthria',
     },
     {
-      id: 'postStroke',
-      name: 'Post-Stroke Cognitive Impairment',
-      hotspot: 'larynx',
-      badge: 'Acoustic Stroke Recovery',
-      voiceChanges: 'Prosodic disruption, phrase fragmentation, and asymmetry in sustained phonation.',
-      keyBiomarkers: ['PPE (Pitch Period Entropy)', 'Harmonic Energy Loss', 'Sustained Phonation Duration', 'Spectral Tilt'],
-      plainSummary: 'Focal neurological injury leaves detectable markers in breathing and phrase cadence.',
+      id: 'post-stroke',
+      heading: 'Post-Stroke Changes',
+      plainDescription:
+        'How the voice changes: Speech rhythm can become uneven, breathing and speaking become harder to coordinate, and vocal energy drops.',
+      measurements: ['Speech rhythm', 'Breath support', 'Vocal energy'],
+      link: '/about/method#post-stroke',
     },
   ]
 
   return (
     <section id="conditions" className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--bg)] transition-colors duration-200">
       <div className="max-w-6xl mx-auto space-y-12">
-        {/* Header */}
+        {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-3">
           <span className="text-xs font-mono font-semibold tracking-wider uppercase text-[var(--accent)]">
             Physiological Vocal Subsystems
@@ -84,221 +92,315 @@ export function ConditionsSection() {
             The 4 Screened Conditions
           </h2>
           <p className="text-sm sm:text-base text-[var(--muted)] leading-relaxed">
-            Neurological disorders manifest through distinct anatomical pathways: cortical motor control, laryngeal phonation, and articulatory precision.
+            Neurological changes manifest in how your brain, vocal cords, and speech muscles coordinate sound. Explore how voice biomarkers detect early deviation.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Anatomical Head & Neck Cross-Section SVG with 3 Hotspots */}
-          <div className="lg:col-span-5 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col items-center">
-            <div className="w-full flex items-center justify-between pb-3 border-b border-[var(--border)] mb-4 text-xs font-mono text-[var(--muted)]">
-              <span>Sagittal Anatomical System</span>
-              <Link href="/licenses" className="text-[var(--primary)] hover:underline">
-                Vector CC-BY 4.0
-              </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          {/* Left Column: 3D Illustrated Character (Inspired by Image 11 reference) */}
+          <div className="lg:col-span-5 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col items-center justify-between relative overflow-hidden">
+            <div className="w-full flex items-center justify-between pb-3 border-b border-[var(--border)] text-xs font-mono text-[var(--muted)]">
+              <span className="font-semibold text-[var(--text)]">Voice Physiology Interactive</span>
+              <span className="text-[var(--accent)]">3 Target Hotspots</span>
             </div>
 
-            {/* Realistic Detailed Vector Graphic */}
-            <div className="relative w-[280px] h-[340px]">
+            {/* 3D Character Illustration Vector Container */}
+            <div className="relative w-full max-w-[320px] h-[370px] my-auto flex items-center justify-center">
               <svg
-                viewBox="0 0 280 340"
-                className="w-full h-full fill-none"
+                viewBox="0 0 340 400"
+                className="w-full h-full drop-shadow-sm select-none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                {/* Cranium and Head Silhouette */}
+                <defs>
+                  {/* Soft 3D Lighting Gradients */}
+                  <linearGradient id="charSkin" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#F5D0B5" />
+                    <stop offset="60%" stopColor="#E2A782" />
+                    <stop offset="100%" stopColor="#C98864" />
+                  </linearGradient>
+
+                  <linearGradient id="charHair" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#2D211E" />
+                    <stop offset="100%" stopColor="#150E0C" />
+                  </linearGradient>
+
+                  <linearGradient id="charJacket" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#8A2542" />
+                    <stop offset="60%" stopColor="#69162D" />
+                    <stop offset="100%" stopColor="#4A0D1E" />
+                  </linearGradient>
+
+                  <linearGradient id="tabletGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FFFFFF" />
+                    <stop offset="100%" stopColor="#EEF2F7" />
+                  </linearGradient>
+
+                  <filter id="softShadow" x="-10%" y="-10%" width="130%" height="130%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="6" floodOpacity="0.12" floodColor="#0B1B33" />
+                  </filter>
+                </defs>
+
+                {/* Ambient Soft Studio Backdrop Glow */}
+                <circle cx="170" cy="200" r="140" fill="var(--surface-2)" opacity="0.8" />
+
+                {/* Character Body / Coat */}
+                {/* Torso & Inner Dark Top */}
+                <path d="M125 240 L125 390 L215 390 L215 240 Z" fill="#1C212B" />
+                {/* Stylish Burgundy / Maroon Jacket (Image 11 reference) */}
+                {/* Left side coat */}
                 <path
-                  d="M75 145 C68 95 95 38 152 38 C215 38 238 90 238 155 C238 195 222 225 208 240 C202 246 186 252 176 258 L176 325 M85 248 L85 325"
-                  stroke="var(--border)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
+                  d="M100 245 C80 260 65 310 65 390 L120 390 L135 250 Z"
+                  fill="url(#charJacket)"
+                  filter="url(#softShadow)"
                 />
-                {/* Facial Profile: Brow, Nose, Lips, Chin */}
+                {/* Right side coat */}
                 <path
-                  d="M75 145 C75 162 70 172 64 178 L76 186 C79 204 86 220 98 232 L108 236 L108 246 L135 254"
-                  stroke="var(--border)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
+                  d="M240 245 C260 260 275 310 275 390 L220 390 L205 250 Z"
+                  fill="url(#charJacket)"
+                  filter="url(#softShadow)"
+                />
+                {/* Belt & Buckle */}
+                <rect x="135" y="340" width="70" height="14" rx="3" fill="#151922" />
+                <rect x="160" y="337" width="20" height="20" rx="3" fill="none" stroke="#D9E0EA" strokeWidth="2.5" />
+
+                {/* Neck */}
+                <rect x="154" y="190" width="32" height="40" rx="10" fill="url(#charSkin)" />
+
+                {/* Head / Face */}
+                <ellipse cx="170" cy="145" rx="46" ry="54" fill="url(#charSkin)" filter="url(#softShadow)" />
+
+                {/* Hair Volume - 3D Styled Dark Wavy Cut */}
+                <path
+                  d="M124 140 C120 85 150 65 170 65 C205 65 224 88 222 140 C222 165 218 190 226 215 C215 220 200 215 195 200 C185 210 160 210 145 198 C140 210 126 220 114 215 C124 190 122 165 124 140 Z"
+                  fill="url(#charHair)"
+                />
+                {/* Hair Top Bangs */}
+                <path
+                  d="M130 110 C145 80 195 80 210 110 C185 95 155 95 130 110 Z"
+                  fill="#3E302B"
                 />
 
-                {/* Internal Anatomical Structures */}
-                {/* Cerebral Cortex contour */}
-                <path
-                  d="M100 80 C110 65 140 55 170 60 C200 65 215 85 215 120 C215 145 195 160 175 160 C145 160 130 140 120 140 C110 140 100 115 100 80 Z"
-                  fill="var(--surface-2)"
-                  stroke="var(--primary)"
-                  strokeWidth="1.5"
-                  strokeDasharray="2 2"
-                  opacity="0.8"
-                />
-                {/* Cerebellum & Brainstem */}
-                <path
-                  d="M180 155 C195 160 205 175 195 190 C185 205 170 205 165 195 L160 230"
-                  stroke="var(--primary)"
-                  strokeWidth="1.5"
-                  opacity="0.7"
-                />
+                {/* Friendly Facial Features */}
+                {/* Eyebrows */}
+                <path d="M142 128 Q152 124 160 127" stroke="#150E0C" strokeWidth="3" strokeLinecap="round" fill="none" />
+                <path d="M180 127 Q188 124 198 128" stroke="#150E0C" strokeWidth="3" strokeLinecap="round" fill="none" />
+                {/* Eyes - Warm & Expressive */}
+                <ellipse cx="151" cy="138" rx="6" ry="7.5" fill="#1E1715" />
+                <circle cx="153" cy="136" r="2.2" fill="#FFFFFF" />
+                <ellipse cx="189" cy="138" rx="6" ry="7.5" fill="#1E1715" />
+                <circle cx="191" cy="136" r="2.2" fill="#FFFFFF" />
+                {/* Nose */}
+                <path d="M168 144 Q170 155 174 156" stroke="#C98864" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                {/* Gentle Smile */}
+                <path d="M158 168 Q170 178 182 168" stroke="#8A2542" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+                <path d="M161 168 Q170 173 179 168" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" fill="none" />
 
-                {/* Oral Cavity, Palate, Tongue */}
-                <path
-                  d="M90 190 C115 190 140 195 145 210 C145 225 125 230 105 228"
-                  stroke="var(--accent)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                {/* Pharynx & Vocal Tract Guideline */}
-                <path
-                  d="M145 210 C155 220 155 240 150 260 L148 310"
-                  stroke="var(--accent)"
-                  strokeWidth="2"
-                  strokeDasharray="3 3"
-                />
+                {/* Left Arm Holding Medical Tablet/Document (Image 11 reference) */}
+                <path d="M85 265 L55 320 L75 330 L105 275 Z" fill="url(#charJacket)" />
+                {/* Hand fingers holding sheet */}
+                <ellipse cx="65" cy="325" rx="8" ry="7" fill="url(#charSkin)" />
+                {/* Digital Clinical Tablet */}
+                <rect x="25" y="270" width="82" height="110" rx="8" fill="url(#tabletGrad)" stroke="#CBD5E1" strokeWidth="2" filter="url(#softShadow)" />
+                {/* Tablet Screen UI Graphics */}
+                <rect x="33" y="282" width="66" height="35" rx="4" fill="#F1F5F9" />
+                {/* Voice waveform on tablet */}
+                <path d="M38 300 Q45 288 52 300 T66 300 T80 300 T90 300" fill="none" stroke="#1F4FD8" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="45" cy="288" r="2" fill="#0F8F8F" />
+                <rect x="35" y="324" width="40" height="4" rx="2" fill="#94A3B8" />
+                <rect x="35" y="332" width="55" height="4" rx="2" fill="#CBD5E1" />
+                <rect x="35" y="340" width="48" height="4" rx="2" fill="#CBD5E1" />
+                <rect x="35" y="352" width="28" height="8" rx="3" fill="#8A2542" />
 
-                {/* Larynx / Thyroid Cartilage / True Vocal Folds */}
-                <path
-                  d="M138 265 L158 268 L152 285 L136 280 Z"
-                  fill="var(--surface-2)"
-                  stroke="var(--success)"
-                  strokeWidth="2"
-                />
-                <circle cx="147" cy="274" r="3" fill="var(--success)" />
-
-                {/* Cervical Vertebrae column */}
-                <path
-                  d="M185 255 L185 320"
-                  stroke="var(--border)"
-                  strokeWidth="4"
-                  strokeDasharray="4 6"
-                  opacity="0.5"
-                />
+                {/* Right Arm Pointing Toward the Condition Cards (Image 11 pose) */}
+                <path d="M225 265 L275 285 L285 272 L235 250 Z" fill="url(#charJacket)" />
+                {/* Forearm extending forward */}
+                <path d="M275 280 L310 270 L315 282 L280 295 Z" fill="url(#charSkin)" />
+                {/* Pointing Index Finger gesturing toward cards */}
+                <path d="M308 273 L332 268 C335 267 337 270 335 273 L312 281 Z" fill="url(#charSkin)" />
+                <circle cx="308" cy="279" r="6" fill="url(#charSkin)" />
               </svg>
 
-              {/* HOTSPOT 1: Brain (PD & AD) */}
+              {/* ── HOTSPOT 1: Brain & Cognitive Control ── */}
               <button
                 type="button"
-                onClick={() => setActiveHotspot(activeHotspot === 'brain' ? null : 'brain')}
-                className={`absolute top-[85px] left-[155px] -translate-x-1/2 -translate-y-1/2 p-2 rounded-full transition-transform ${
-                  activeHotspot === 'brain' ? 'scale-125' : 'hover:scale-110'
-                }`}
-                title="Tap to inspect Brain motor control"
-                aria-label="Inspect Brain motor control hotspot"
+                onClick={() => handleHotspotClick('brain')}
+                className="absolute top-[68px] left-[170px] -translate-x-1/2 -translate-y-1/2 p-2 rounded-full transition-transform hover:scale-110 focus:outline-none z-10"
+                title="Click to inspect Brain & Cognitive Control"
+                aria-label="Brain hotspot"
               >
-                <span className="relative flex h-6 w-6">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-60" />
-                  <span className="relative inline-flex rounded-full h-6 w-6 bg-[var(--primary)] items-center justify-center text-white text-[11px] font-bold shadow-md">
-                    1
+                <span className="relative flex h-7 w-7">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-50" />
+                  <span
+                    className={`relative inline-flex rounded-full h-7 w-7 items-center justify-center text-white text-xs font-bold shadow-md transition-colors ${
+                      visitedHotspots.has('brain') ? 'bg-emerald-600' : 'bg-[var(--primary)]'
+                    }`}
+                  >
+                    {visitedHotspots.has('brain') ? <Check size={14} /> : '1'}
                   </span>
                 </span>
               </button>
 
-              {/* HOTSPOT 2: Larynx & Vocal Folds */}
+              {/* ── HOTSPOT 2: Vocal Folds & Larynx ── */}
               <button
                 type="button"
-                onClick={() => setActiveHotspot(activeHotspot === 'larynx' ? null : 'larynx')}
-                className={`absolute top-[270px] left-[147px] -translate-x-1/2 -translate-y-1/2 p-2 rounded-full transition-transform ${
-                  activeHotspot === 'larynx' ? 'scale-125' : 'hover:scale-110'
-                }`}
-                title="Tap to inspect Larynx phonation"
-                aria-label="Inspect Larynx phonation hotspot"
+                onClick={() => handleHotspotClick('larynx')}
+                className="absolute top-[182px] left-[170px] -translate-x-1/2 -translate-y-1/2 p-2 rounded-full transition-transform hover:scale-110 focus:outline-none z-10"
+                title="Click to inspect Vocal Folds & Larynx"
+                aria-label="Larynx hotspot"
               >
-                <span className="relative flex h-6 w-6">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-60" />
-                  <span className="relative inline-flex rounded-full h-6 w-6 bg-[var(--success)] items-center justify-center text-white text-[11px] font-bold shadow-md">
-                    2
+                <span className="relative flex h-7 w-7">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-50" />
+                  <span
+                    className={`relative inline-flex rounded-full h-7 w-7 items-center justify-center text-white text-xs font-bold shadow-md transition-colors ${
+                      visitedHotspots.has('larynx') ? 'bg-emerald-600' : 'bg-[var(--accent)]'
+                    }`}
+                  >
+                    {visitedHotspots.has('larynx') ? <Check size={14} /> : '2'}
                   </span>
                 </span>
               </button>
 
-              {/* HOTSPOT 3: Articulators (Tongue, Lips) */}
+              {/* ── HOTSPOT 3: Speech Muscles & Articulators ── */}
               <button
                 type="button"
-                onClick={() => setActiveHotspot(activeHotspot === 'articulators' ? null : 'articulators')}
-                className={`absolute top-[208px] left-[118px] -translate-x-1/2 -translate-y-1/2 p-2 rounded-full transition-transform ${
-                  activeHotspot === 'articulators' ? 'scale-125' : 'hover:scale-110'
-                }`}
-                title="Tap to inspect Oral Articulators"
-                aria-label="Inspect Oral Articulators hotspot"
+                onClick={() => handleHotspotClick('articulators')}
+                className="absolute top-[148px] left-[170px] -translate-x-1/2 -translate-y-1/2 p-2 rounded-full transition-transform hover:scale-110 focus:outline-none z-10"
+                title="Click to inspect Speech Muscles & Tongue"
+                aria-label="Articulators hotspot"
               >
-                <span className="relative flex h-6 w-6">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-60" />
-                  <span className="relative inline-flex rounded-full h-6 w-6 bg-[var(--accent)] items-center justify-center text-white text-[11px] font-bold shadow-md">
-                    3
+                <span className="relative flex h-7 w-7">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-50" />
+                  <span
+                    className={`relative inline-flex rounded-full h-7 w-7 items-center justify-center text-white text-xs font-bold shadow-md transition-colors ${
+                      visitedHotspots.has('articulators') ? 'bg-emerald-600' : 'bg-[var(--success)]'
+                    }`}
+                  >
+                    {visitedHotspots.has('articulators') ? <Check size={14} /> : '3'}
                   </span>
                 </span>
               </button>
             </div>
 
-            {/* Selected Hotspot Explanation Box */}
-            <div className="w-full mt-4 p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] min-h-[96px] flex flex-col justify-center text-left">
-              {activeHotspot ? (
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-[var(--primary)]">
-                    {hotspotDetails[activeHotspot].title}
-                  </div>
-                  <div className="text-[11px] font-semibold text-[var(--accent)]">
-                    {hotspotDetails[activeHotspot].conditions}
-                  </div>
-                  <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    {hotspotDetails[activeHotspot].plainText}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center text-xs text-[var(--muted)] flex items-center justify-center gap-2">
-                  <Info size={14} className="text-[var(--accent)]" />
-                  <span>Click numbered markers (1, 2, or 3) on the anatomical head to see how each subsystem generates vocal clues.</span>
-                </div>
-              )}
+            {/* Bottom Helper Hint */}
+            <div className="w-full pt-3 border-t border-[var(--border)] text-center text-xs text-[var(--muted)]">
+              Click pulse dots <span className="font-semibold text-[var(--text)]">1, 2, or 3</span> on the clinician avatar to reveal physiological speech mechanics.
             </div>
           </div>
 
-          {/* Right Column: 2x2 Bento Grid of Conditions */}
+          {/* Right Column: 4 Clean Condition Cards (Human Plain Headers, 3 Bordered Pill Tags, Learn Link) */}
           <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {conditions.map((c) => {
-              const isLinkedToActive = activeHotspot === c.hotspot
-              return (
-                <div
-                  key={c.id}
-                  className={`p-6 rounded-2xl bg-[var(--surface)] border transition-all duration-200 shadow-[var(--shadow-sm)] flex flex-col justify-between space-y-4 ${
-                    isLinkedToActive
-                      ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/15 shadow-[var(--shadow-md)]'
-                      : 'border-[var(--border)] hover:border-[var(--muted)]'
-                  }`}
-                >
-                  <div className="space-y-2">
-                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-[var(--surface-2)] text-[var(--muted)] border border-[var(--border)]">
-                      {c.badge}
-                    </span>
-                    <h3 className="text-lg font-display font-bold text-[var(--text)]">
-                      {c.name}
-                    </h3>
-                    <p className="text-xs text-[var(--text)] font-medium leading-relaxed">
-                      {c.plainSummary}
-                    </p>
-                    <p className="text-xs text-[var(--muted)] leading-relaxed">
-                      {c.voiceChanges}
-                    </p>
-                  </div>
+            {conditions.map((c) => (
+              <div
+                key={c.id}
+                className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:border-[var(--muted)] transition-all flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-2.5">
+                  <h3 className="text-lg font-display font-bold text-[var(--text)] tracking-tight">
+                    {c.heading}
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    {c.plainDescription}
+                  </p>
+                </div>
 
-                  <div className="pt-3 border-t border-[var(--border)] space-y-1">
-                    <div className="text-[10px] font-mono uppercase text-[var(--muted)] font-semibold">
-                      Primary Acoustic Targets:
-                    </div>
+                <div className="space-y-3 pt-3 border-t border-[var(--border)]">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-[var(--muted)] font-semibold block mb-1.5">
+                      What we measure:
+                    </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {c.keyBiomarkers.map((bm) => (
+                      {c.measurements.map((m) => (
                         <span
-                          key={bm}
-                          className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]"
+                          key={m}
+                          className="text-[11px] font-mono px-2.5 py-1 rounded-md bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]"
                         >
-                          {bm}
+                          {m}
                         </span>
                       ))}
                     </div>
                   </div>
+
+                  <Link
+                    href={c.link}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)] hover:underline pt-1"
+                  >
+                    <span>Learn about voice markers</span>
+                    <ArrowRight size={13} />
+                  </Link>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Slide-In Modal / Detail Sheet When a Hotspot is Clicked */}
+      {activeHotspot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="max-w-lg w-full rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl p-6 space-y-5 animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[var(--primary)] text-white text-xs font-bold flex items-center justify-center">
+                  {hotspotDetails[activeHotspot].number}
+                </span>
+                <span className="text-xs font-mono font-bold text-[var(--accent)] uppercase">
+                  Anatomical Subsystem Details
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveHotspot(null)}
+                className="p-1 rounded-md text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-xl font-display font-bold text-[var(--text)]">
+                  {hotspotDetails[activeHotspot].title}
+                </h3>
+                <p className="text-xs font-medium text-[var(--accent)] mt-0.5">
+                  {hotspotDetails[activeHotspot].subtitle}
+                </p>
+              </div>
+
+              <p className="text-xs text-[var(--muted)] leading-relaxed">
+                {hotspotDetails[activeHotspot].description}
+              </p>
+
+              <div className="p-3.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] space-y-1">
+                <div className="text-[11px] font-bold text-[var(--text)]">
+                  Associated Indications:
+                </div>
+                <div className="text-xs text-[var(--primary)] font-medium">
+                  {hotspotDetails[activeHotspot].conditions}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] space-y-1">
+                <div className="text-[11px] font-bold text-[var(--text)]">
+                  Early Acoustic Voice Impact:
+                </div>
+                <div className="text-xs text-[var(--muted)]">
+                  {hotspotDetails[activeHotspot].voiceImpact}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setActiveHotspot(null)}
+                className="btn-primary text-xs py-2 px-5 rounded-xl"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
