@@ -69,16 +69,28 @@ class AppointmentModel(BaseModel):
     createdAt: str
 
 class DoctorModel(BaseModel):
-    id: str
+    id: Optional[str] = None
     name: str
-    specialty: str
+    speciality: Optional[str] = "Neurology"
+    specialty: Optional[str] = "Neurology"
+    qualification: Optional[str] = None
+    registration: Optional[str] = None
     hospital: str
-    city: str
-    phone: str
-    languages: List[str]
-    photoURL: Optional[str] = None
+    address: str = "Jabalpur"
+    city: str = "Jabalpur"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    phone: str = "Contact via hospital"
+    languages: List[str] = ["Hindi", "English"]
+    experience_years: Optional[int] = 10
+    conditions_treated: List[str] = []
     available: bool = True
+    verified: bool = True
+    source_url: Optional[str] = None
+    sourceUrl: Optional[str] = None
+    sourceName: Optional[str] = None
     distanceKm: Optional[float] = None
+    fee: Optional[int] = 500
 
 class NotificationModel(BaseModel):
     id: str

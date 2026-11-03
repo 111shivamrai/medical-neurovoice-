@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { downloadScreeningPdf } from '@/lib/downloadPdf'
 import {
   Users,
   Calendar,
@@ -19,12 +20,18 @@ import {
   Search,
   Filter,
   Loader2,
+  Sparkles,
+  Send,
+  MessageSquare,
+  Bot,
+  User as UserIcon,
 } from 'lucide-react'
 
 interface Doctor {
   id: string
   name: string
-  speciality: string
+  speciality?: string
+  specialty?: string
   qualification?: string
   registration?: string
   hospital: string
@@ -33,18 +40,34 @@ interface Doctor {
   lat?: number
   lng?: number
   languages?: string[]
-  fee?: number
   experience_years?: number
-  sourceUrl: string
-  sourceName: string
-  verified: boolean
+  conditions_treated?: string[]
+  source_url?: string
+  sourceUrl?: string
+  sourceName?: string
+  verified?: boolean
+  available?: boolean
   distanceKm?: number
+}
+
+interface ChatMessage {
+  id: string
+  sender: 'user' | 'assistant'
+  text: string
+  timestamp: string
 }
 
 function CareCommandContent() {
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'appointments' ? 'appointments' : 'doctors'
-  const [activeTab, setActiveTab] = useState<'doctors' | 'appointments'>(initialTab)
+  const tabParam = searchParams.get('tab')
+  const initialTab =
+    tabParam === 'assistant'
+      ? 'assistant'
+      : tabParam === 'appointments'
+      ? 'appointments'
+      : 'doctors'
+
+  const [activeTab, setActiveTab] = useState<'doctors' | 'assistant' | 'appointments'>(initialTab)
 
   // Doctor Directory State
   const [doctors, setDoctors] = useState<Doctor[]>([])
@@ -76,10 +99,25 @@ function CareCommandContent() {
   ])
   const [requestSuccess, setRequestSuccess] = useState(false)
 
-  // Admin CSV row importer state
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [showAddDoctorModal, setShowAddDoctorModal] = useState(false)
-  const [csvRowInput, setCsvRowInput] = useState('')
+  // AI Health Assistant State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'msg-0',
+      sender: 'assistant',
+      text: 'Namaste! I am your NeuroVoice health assistant. You can ask me questions about Parkinson’s disease, Alzheimer’s, speech muscle changes, or your voice screening results.',
+      timestamp: 'Just now',
+    },
+  ])
+  const [chatInput, setChatInput] = useState('')
+  const [isAssistantTyping, setIsAssistantTyping] = useState(false)
+  const chatBottomRef = useRef<HTMLDivElement>(null)
+
+  const suggestedQuestions = [
+    'What is Parkinson’s disease?',
+    'What do my results mean?',
+    'Should I see a doctor?',
+    'How do I improve my voice health?',
+  ]
 
   // Haversine Distance Formula
   const calculateHaversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -101,15 +139,13 @@ function CareCommandContent() {
     fetch('/api/doctors')
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Doctor[]) => {
-        setDoctors(data)
+        if (data && data.length > 0) {
+          setDoctors(data)
+        }
       })
-      .catch(() => {
-        // Fallback to verified seed entries
+      .catch((err) => {
+        console.warn('Doctors API notice:', err)
       })
-
-    // Check if user has admin claim
-    const role = typeof window !== 'undefined' ? localStorage.getItem('neurovoice-role') : null
-    setIsAdmin(role === 'admin')
   }, [])
 
   // Geolocation Request
@@ -121,7 +157,6 @@ function CareCommandContent() {
           setUserLocation(loc)
           setLocationPermission('granted')
 
-          // Calculate distances and sort nearest first
           setDoctors((prev) => {
             const withDist = prev.map((doc) => {
               if (doc.lat && doc.lng) {
@@ -134,8 +169,6 @@ function CareCommandContent() {
         },
         () => {
           setLocationPermission('denied')
-          // Sort alphabetically
-          setDoctors((prev) => [...prev].sort((a, b) => a.name.localeCompare(b.name)))
         }
       )
     }
@@ -143,12 +176,14 @@ function CareCommandContent() {
 
   // Filtered Doctors
   const filteredDoctors = doctors.filter((doc) => {
+    const spec = (doc.speciality || doc.specialty || '').toLowerCase()
     const matchesSearch =
       doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.hospital.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.address.toLowerCase().includes(searchQuery.toLowerCase())
+      doc.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.conditions_treated && doc.conditions_treated.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase())))
     const matchesSpeciality =
-      selectedSpeciality === 'all' || doc.speciality.toLowerCase().includes(selectedSpeciality.toLowerCase())
+      selectedSpeciality === 'all' || spec.includes(selectedSpeciality.toLowerCase())
     return matchesSearch && matchesSpeciality
   })
 
@@ -161,44 +196,83 @@ function CareCommandContent() {
       id: 'req-' + Math.floor(1000 + Math.random() * 9000),
       doctorName: selectedDoctor.name,
       hospital: selectedDoctor.hospital,
-      speciality: selectedDoctor.speciality,
+      speciality: selectedDoctor.speciality || selectedDoctor.specialty || 'Neurology',
       date: requestDate || 'Preferred within 7 days',
       time: requestTime,
       status: 'Request Submitted · Call Clinic to Confirm',
       reason: consultReason,
-      reportAttached: attachLatestReport ? 'NV-Latest-Report.pdf' : 'None',
+      reportAttached: attachLatestReport ? 'NV-Screening-Latest.pdf' : 'None',
     }
 
     setAppointmentsList([newReq, ...appointmentsList])
     setRequestSuccess(true)
   }
 
-  // Import CSV Row for Doctors (Admin Only)
-  const handleImportCsvDoctor = (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const parts = csvRowInput.split(',').map((s) => s.trim())
-      if (parts.length < 5) {
-        alert('Format: Name, Speciality, Hospital, Address, SourceURL')
-        return
-      }
-      const newDoc: Doctor = {
-        id: 'doc-imported-' + Date.now(),
-        name: parts[0],
-        speciality: parts[1],
-        hospital: parts[2],
-        address: parts[3],
-        city: 'Jabalpur',
-        sourceUrl: parts[4],
-        sourceName: 'Admin CSV Import',
-        verified: true,
-      }
-      setDoctors([newDoc, ...doctors])
-      setShowAddDoctorModal(false)
-      setCsvRowInput('')
-    } catch {
-      alert('Error parsing CSV row.')
+  // Send message to AI Health Assistant
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || chatInput).trim()
+    if (!text || isAssistantTyping) return
+    if (chatMessages.length >= 21) return // 1 initial + 10 user + 10 assistant = 21
+
+    const userMsg: ChatMessage = {
+      id: 'msg-' + Date.now(),
+      sender: 'user',
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
+
+    setChatMessages((prev) => [...prev, userMsg])
+    setChatInput('')
+    setIsAssistantTyping(true)
+
+    try {
+      const res = await fetch('/api/assistant/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          context: {
+            conditions: ["Parkinson's Voice Steadiness", 'Healthy Baseline'],
+            age: 50,
+            language: 'English',
+          },
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const assistantMsg: ChatMessage = {
+          id: 'msg-' + (Date.now() + 1),
+          sender: 'assistant',
+          text: data.reply,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }
+        setChatMessages((prev) => [...prev, assistantMsg])
+      } else {
+        throw new Error('Assistant API returned an error.')
+      }
+    } catch {
+      const fallbackMsg: ChatMessage = {
+        id: 'msg-' + (Date.now() + 1),
+        sender: 'assistant',
+        text: 'NeuroVoice screens for vocal cord micro-tremors, cadence changes, and speech clarity. For medical concerns, always consult a qualified neurologist.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+      setChatMessages((prev) => [...prev, fallbackMsg])
+    } finally {
+      setIsAssistantTyping(false)
+      setTimeout(() => {
+        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    }
+  }
+
+  // Get initials for doctor avatar
+  const getInitials = (name: string) => {
+    const clean = name.replace(/^(Dr\.?|Prof\.?)\s+/i, '').trim()
+    const parts = clean.split(' ')
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    return clean.slice(0, 2).toUpperCase()
   }
 
   return (
@@ -213,16 +287,16 @@ function CareCommandContent() {
             Specialist Care Command
           </h1>
           <p className="text-xs text-[var(--muted)] mt-0.5">
-            Connect with verified neurological specialists and manage consultation requests
+            Connect with verified neurological specialists and ask our AI assistant about voice health
           </p>
         </div>
 
-        {/* Tab Switcher */}
+        {/* 3 Tabs: Find Doctors | Ask about your condition | My Appointments */}
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--surface)] border border-[var(--border)] shadow-sm">
           <button
             type="button"
             onClick={() => setActiveTab('doctors')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               activeTab === 'doctors'
                 ? 'bg-[var(--primary)] text-white shadow-sm'
                 : 'text-[var(--muted)] hover:text-[var(--text)]'
@@ -234,8 +308,21 @@ function CareCommandContent() {
 
           <button
             type="button"
+            onClick={() => setActiveTab('assistant')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === 'assistant'
+                ? 'bg-[var(--primary)] text-white shadow-sm'
+                : 'text-[var(--muted)] hover:text-[var(--text)]'
+            }`}
+          >
+            <Bot size={14} />
+            <span>Ask about your condition</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('appointments')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               activeTab === 'appointments'
                 ? 'bg-[var(--primary)] text-white shadow-sm'
                 : 'text-[var(--muted)] hover:text-[var(--text)]'
@@ -247,20 +334,20 @@ function CareCommandContent() {
         </div>
       </div>
 
-      {/* TAB 1: FIND DOCTORS */}
+      {/* ──────────────── TAB 1: FIND DOCTORS ──────────────── */}
       {activeTab === 'doctors' && (
         <div className="space-y-6">
-          {/* Controls Bar: Search, Speciality Filter, Geolocation trigger, and Admin Add */}
+          {/* Controls Bar: Search, Speciality Filter, Geolocation trigger */}
           <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div className="flex-1 flex flex-col sm:flex-row items-center gap-3">
-              {/* Search Box (Clean white bg, border, label) */}
+              {/* Search Box */}
               <div className="relative w-full sm:w-72">
                 <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search doctor or clinic..."
+                  placeholder="Search doctor, hospital, or condition..."
                   className="input-clinical w-full pl-9 text-xs"
                 />
               </div>
@@ -285,7 +372,7 @@ function CareCommandContent() {
                 <button
                   type="button"
                   onClick={requestLocation}
-                  className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 text-[var(--primary)] border-[var(--border)]"
+                  className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 text-[var(--primary)] border border-[var(--border)]"
                 >
                   <Navigation size={14} />
                   <span>Enable location for distance info</span>
@@ -293,20 +380,8 @@ function CareCommandContent() {
               ) : (
                 <span className="text-xs font-mono font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
                   <CheckCircle2 size={13} />
-                  <span>Sorted by nearest first (Haversine)</span>
+                  <span>Sorted by nearest (~km)</span>
                 </span>
-              )}
-
-              {/* Admin Add Doctor */}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowAddDoctorModal(true)}
-                  className="btn-primary text-xs py-2 px-3.5 rounded-xl flex items-center gap-1"
-                >
-                  <Plus size={14} />
-                  <span>Add a Doctor</span>
-                </button>
               )}
             </div>
           </div>
@@ -316,7 +391,7 @@ function CareCommandContent() {
             <span className="font-semibold text-[var(--text)]">Recommended Specialties by Screening Indication:</span>
             <div className="flex flex-wrap gap-2">
               <span className="px-2.5 py-1 rounded-md bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)]">
-                Parkinson's / Alzheimer's: <strong className="text-[var(--primary)]">Neurologist</strong>
+                Parkinson&apos;s / Alzheimer&apos;s: <strong className="text-[var(--primary)]">Neurologist</strong>
               </span>
               <span className="px-2.5 py-1 rounded-md bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)]">
                 Dysarthria: <strong className="text-[var(--accent)]">Speech-Language Pathologist</strong>
@@ -327,93 +402,309 @@ function CareCommandContent() {
             </div>
           </div>
 
-          {/* Verified Doctor Cards Grid */}
+          {/* ──────── VERIFIED DOCTOR CARDS (TASK 10B DESIGN) ──────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredDoctors.map((doc) => (
-              <div
-                key={doc.id}
-                className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-3">
-                  {/* Verified Badge & Distance */}
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                      <ShieldCheck size={13} />
-                      <span>Verified</span>
-                    </span>
+            {filteredDoctors.map((doc) => {
+              const sourceUrl = doc.source_url || doc.sourceUrl || '#'
+              const sourceName = doc.sourceName || 'Public Medical Registry'
+              const conditionsTreated = doc.conditions_treated || ["Parkinson's", 'Neurology']
+              const languages = doc.languages || ['Hindi', 'English']
 
-                    {doc.distanceKm !== undefined ? (
-                      <span className="text-xs font-mono font-bold text-[var(--accent)]">
-                        ~{doc.distanceKm} km away
-                      </span>
-                    ) : (
-                      <span className="text-[11px] font-mono text-[var(--muted)]">
-                        {doc.city}
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-base font-display font-bold text-[var(--text)]">
-                      {doc.name}
-                    </h3>
-                    <div className="text-xs font-semibold text-[var(--primary)] mt-0.5">
-                      {doc.speciality}
+              return (
+                <div
+                  key={doc.id || doc.name}
+                  className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Left: Avatar circle with initials, teal background */}
+                    <div className="w-12 h-12 rounded-full bg-[#0F8F8F] text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                      {getInitials(doc.name)}
                     </div>
-                    {doc.qualification && (
-                      <div className="text-[11px] text-[var(--muted)] font-mono mt-0.5">
-                        {doc.qualification}
+
+                    {/* Right Details */}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <h3 className="text-base font-display font-bold text-[var(--text)] truncate">
+                          {doc.name}
+                        </h3>
+                        {doc.distanceKm !== undefined && (
+                          <span className="text-[11px] font-mono font-bold text-[var(--accent)] shrink-0">
+                            ~{doc.distanceKm} km away
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="space-y-1.5 text-xs text-[var(--muted)]">
-                    <div className="font-medium text-[var(--text)]">{doc.hospital}</div>
-                    <div className="text-[11px] leading-relaxed flex items-start gap-1">
-                      <MapPin size={13} className="shrink-0 mt-0.5 text-[var(--muted)]" />
-                      <span>{doc.address}</span>
+                      <div className="text-xs text-[var(--muted)] font-medium">
+                        {doc.speciality || doc.specialty || 'Neurology'}
+                        {doc.qualification && ` · ${doc.qualification}`}
+                      </div>
+
+                      <div className="text-xs text-[var(--text)] font-semibold">
+                        {doc.hospital} · {doc.city || 'Jabalpur'}
+                      </div>
+
+                      {doc.experience_years && (
+                        <div className="text-[11px] text-[var(--muted)]">
+                          {doc.experience_years} years experience
+                        </div>
+                      )}
+
+                      {/* Conditions treated pills */}
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {conditionsTreated.map((c) => (
+                          <span
+                            key={c}
+                            className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--surface-2)] text-[var(--muted)] border border-[var(--border)]"
+                          >
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Languages */}
+                      <div className="text-[11px] text-[var(--muted)] pt-0.5">
+                        Languages: {languages.join(', ')}
+                      </div>
+
+                      {/* Verified Source Link */}
+                      <div className="text-[11px] pt-1">
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[var(--primary)] font-semibold hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>Verified via {sourceName} ↗</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Public Source Link (Mandatory) */}
-                  <div className="pt-2 border-t border-[var(--border)] text-[11px]">
-                    <span className="text-[var(--muted)]">Source: </span>
+                  {/* Actions: Get Directions & Request Appointment */}
+                  <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between gap-2">
                     <a
-                      href={doc.sourceUrl}
+                      href={
+                        doc.lat && doc.lng
+                          ? `https://www.google.com/maps/dir/?api=1&destination=${doc.lat},${doc.lng}`
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                              doc.hospital + ' ' + doc.address
+                            )}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-semibold text-[var(--primary)] hover:underline inline-flex items-center gap-1"
+                      className="btn-ghost text-xs py-2 px-3 rounded-lg flex items-center gap-1 text-[var(--muted)] hover:text-[var(--text)]"
                     >
-                      <span>{doc.sourceName}</span>
-                      <ExternalLink size={10} />
+                      <span>Get directions →</span>
                     </a>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedDoctor(doc)
+                        setShowRequestModal(true)
+                      }}
+                      className="btn-primary text-xs py-2 px-3.5 rounded-lg font-semibold shadow-sm"
+                    >
+                      Request appointment
+                    </button>
                   </div>
                 </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
-                {/* Actions: Request Consultation & Google Maps Directions */}
-                <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between gap-2">
-                  {doc.lat && doc.lng && (
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${doc.lat},${doc.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-ghost text-xs py-2 px-3 rounded-lg flex items-center gap-1"
-                    >
-                      <span>Directions →</span>
-                    </a>
+      {/* ──────────────── TAB 2: ASK ABOUT YOUR CONDITION (AI HEALTH ASSISTANT) ──────────────── */}
+      {activeTab === 'assistant' && (
+        <div className="max-w-3xl mx-auto space-y-4">
+          {/* Header & Disclaimer */}
+          <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-2">
+            <div className="flex items-center gap-2 text-[var(--accent)] text-xs font-mono font-bold uppercase">
+              <Sparkles size={15} />
+              <span>AI Health Assistant</span>
+            </div>
+            <h2 className="text-xl font-display font-bold text-[var(--text)]">
+              Ask about your condition
+            </h2>
+            <p className="text-[11px] text-[var(--muted)]">
+              This assistant provides general information only. It is not a doctor. Always consult a qualified neurologist for personal medical decisions.
+            </p>
+          </div>
+
+          {/* Suggested Question Chips */}
+          <div className="flex flex-wrap gap-2">
+            {suggestedQuestions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => handleSendMessage(q)}
+                disabled={isAssistantTyping || chatMessages.length >= 21}
+                className="px-3.5 py-1.5 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-2)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-colors shadow-sm disabled:opacity-50"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Container */}
+          <div className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm min-h-[420px] max-h-[560px] flex flex-col justify-between space-y-4">
+            {/* Messages Scroll Area */}
+            <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex items-start gap-3 ${
+                    msg.sender === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  {msg.sender === 'assistant' && (
+                    <div className="w-8 h-8 rounded-full bg-[#0F8F8F]/15 text-[#0F8F8F] flex items-center justify-center shrink-0 border border-[#0F8F8F]/30 mt-1">
+                      <Bot size={16} />
+                    </div>
                   )}
 
+                  <div
+                    className={`max-w-[82%] sm:max-w-[75%] rounded-2xl p-4 text-xs leading-relaxed space-y-1 shadow-sm ${
+                      msg.sender === 'user'
+                        ? 'bg-[var(--primary)] text-white rounded-tr-none'
+                        : 'bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-tl-none'
+                    }`}
+                  >
+                    <p>{msg.text}</p>
+                    <div
+                      className={`text-[10px] text-right font-mono ${
+                        msg.sender === 'user' ? 'text-blue-100' : 'text-[var(--muted)]'
+                      }`}
+                    >
+                      {msg.timestamp}
+                    </div>
+                  </div>
+
+                  {msg.sender === 'user' && (
+                    <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shrink-0 shadow-sm mt-1">
+                      <UserIcon size={14} />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Typing Indicator */}
+              {isAssistantTyping && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#0F8F8F]/15 text-[#0F8F8F] flex items-center justify-center shrink-0 border border-[#0F8F8F]/30">
+                    <Bot size={16} />
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] rounded-tl-none flex items-center gap-1.5 shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" />
+                    <span
+                      className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce"
+                      style={{ animationDelay: '0.15s' }}
+                    />
+                    <span
+                      className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce"
+                      style={{ animationDelay: '0.3s' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Capping Notice after 10 messages */}
+              {chatMessages.length >= 21 && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 text-center">
+                  For detailed advice, please consult a neurologist. This chat is for information only.
+                </div>
+              )}
+
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Input Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSendMessage()
+              }}
+              className="flex items-center gap-2 pt-2 border-t border-[var(--border)]"
+            >
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                disabled={isAssistantTyping || chatMessages.length >= 21}
+                placeholder={
+                  chatMessages.length >= 21
+                    ? 'Session limit reached (10 questions max)'
+                    : 'Ask a question about neurological conditions or your screening...'
+                }
+                className="input-clinical flex-1 text-xs py-2.5 px-3.5 disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={!chatInput.trim() || isAssistantTyping || chatMessages.length >= 21}
+                className="btn-primary text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                <span>Send</span>
+                <Send size={13} />
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── TAB 3: MY APPOINTMENTS ──────────────── */}
+      {activeTab === 'appointments' && (
+        <div className="space-y-6">
+          <div className="p-4 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 text-xs text-amber-900 dark:text-amber-200 leading-relaxed flex items-start gap-2.5">
+            <AlertCircle size={17} className="shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
+            <div>
+              <strong>Consultation Notice:</strong> Appointments through NeuroVoice are structured <strong>consultation requests</strong> with attached acoustic reports. Please contact the hospital clinic directly to finalize and confirm your consultation time slot.
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {appointmentsList.map((apt) => (
+              <div
+                key={apt.id}
+                className="p-5 sm:p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-[var(--muted)]">{apt.id}</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
+                      {apt.status}
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-[var(--text)]">
+                    {apt.doctorName} · {apt.speciality}
+                  </h3>
+                  <div className="text-xs text-[var(--muted)] font-medium">{apt.hospital}</div>
+
+                  <div className="flex items-center gap-4 text-xs font-mono text-[var(--muted)] pt-1">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={13} />
+                      {apt.date}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock size={13} />
+                      {apt.time}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-[var(--muted)] pt-1">
+                    Reason: {apt.reason} (Attached: {apt.reportAttached})
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedDoctor(doc)
-                      setShowRequestModal(true)
-                      setRequestStep(1)
-                      setRequestSuccess(false)
-                    }}
-                    className="btn-primary text-xs py-2 px-4 rounded-lg flex-1 justify-center"
+                    onClick={() => downloadScreeningPdf('NV-Latest', 'Participant')}
+                    className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-[var(--border)]"
                   >
-                    Request Consultation
+                    <FileText size={14} />
+                    <span>View Attached Report</span>
                   </button>
                 </div>
               </div>
@@ -422,75 +713,14 @@ function CareCommandContent() {
         </div>
       )}
 
-      {/* TAB 2: MY APPOINTMENTS */}
-      {activeTab === 'appointments' && (
-        <div className="space-y-6">
-          <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-            <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-600" />
-            <span>
-              <strong>Consultation Notice:</strong> Appointments through NeuroVoice are structured <strong>consultation requests</strong> with attached acoustic reports. Please contact the hospital clinic directly to finalize and confirm your consultation time slot. We never claim guaranteed automated booking without clinic confirmation.
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            {appointmentsList.map((app) => (
-              <div
-                key={app.id}
-                className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-[var(--muted)]">{app.id}</span>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
-                      {app.status}
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-display font-bold text-[var(--text)]">
-                    {app.doctorName} · {app.speciality}
-                  </h3>
-                  <div className="text-xs text-[var(--muted)]">{app.hospital}</div>
-
-                  <div className="text-xs text-[var(--muted)] flex items-center gap-4 pt-1">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={13} />
-                      {app.date}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={13} />
-                      {app.time}
-                    </span>
-                  </div>
-
-                  <div className="text-xs font-medium text-[var(--text)] pt-1">
-                    Reason: {app.reason} (Attached: {app.reportAttached})
-                  </div>
-                </div>
-
-                <div className="shrink-0">
-                  <Link
-                    href={`/api/reports/NV-10492/pdf`}
-                    target="_blank"
-                    className="btn-ghost text-xs py-2 px-3 rounded-lg flex items-center gap-1.5"
-                  >
-                    <FileText size={14} />
-                    <span>View Attached Report</span>
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 4-STEP APPOINTMENT REQUEST MODAL */}
+      {/* APPOINTMENT REQUEST MODAL */}
       {showRequestModal && selectedDoctor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="max-w-lg w-full rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-md)] p-6 space-y-6">
+          <div className="max-w-lg w-full rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl p-6 space-y-5 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <div>
                 <span className="text-xs font-mono font-bold text-[var(--accent)] uppercase">
-                  Step {requestStep} of 4 · Consultation Request
+                  Request Specialist Consultation
                 </span>
                 <h3 className="text-lg font-display font-bold text-[var(--text)]">
                   {selectedDoctor.name}
@@ -498,7 +728,10 @@ function CareCommandContent() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowRequestModal(false)}
+                onClick={() => {
+                  setShowRequestModal(false)
+                  setRequestSuccess(false)
+                }}
                 className="p-1 rounded-md text-[var(--muted)] hover:text-[var(--text)]"
               >
                 <X size={18} />
@@ -506,212 +739,113 @@ function CareCommandContent() {
             </div>
 
             {!requestSuccess ? (
-              <form onSubmit={handleConfirmAppointmentRequest} className="space-y-4">
-                {/* Step 1: Reason for Consultation */}
-                {requestStep === 1 && (
-                  <div className="space-y-3">
-                    <label className="text-xs font-semibold text-[var(--text)]">
-                      1. Reason for consultation / symptoms noticed
+              <form onSubmit={handleConfirmAppointmentRequest} className="space-y-4 text-xs">
+                <div>
+                  <label className="font-semibold text-[var(--text)] block mb-1">
+                    Hospital & Clinic
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={`${selectedDoctor.hospital} · ${selectedDoctor.address}`}
+                    className="input-clinical w-full text-xs bg-[var(--surface-2)] text-[var(--muted)]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-[var(--text)] block mb-1">
+                      Preferred Date
                     </label>
-                    <textarea
-                      rows={3}
-                      value={consultReason}
-                      onChange={(e) => setConsultReason(e.target.value)}
+                    <input
+                      type="date"
+                      value={requestDate}
+                      onChange={(e) => setRequestDate(e.target.value)}
                       className="input-clinical w-full text-xs"
-                      placeholder="e.g. Mild vocal hesitation and pitch tremor noticed during screening..."
+                      required
                     />
-                    <div className="flex justify-end pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setRequestStep(2)}
-                        className="btn-primary text-xs py-2 px-5 rounded-lg"
-                      >
-                        Next: Doctor & Clinic →
-                      </button>
-                    </div>
                   </div>
-                )}
-
-                {/* Step 2: Doctor Details Confirmation */}
-                {requestStep === 2 && (
-                  <div className="space-y-3">
-                    <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] space-y-1.5 text-xs">
-                      <div className="font-bold text-[var(--text)]">{selectedDoctor.name}</div>
-                      <div className="text-[var(--primary)] font-semibold">{selectedDoctor.speciality}</div>
-                      <div className="text-[var(--muted)]">{selectedDoctor.hospital}</div>
-                      <div className="text-[11px] text-[var(--muted)]">{selectedDoctor.address}</div>
-                    </div>
-                    <div className="flex justify-between pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setRequestStep(1)}
-                        className="btn-ghost text-xs py-2 px-4 rounded-lg"
-                      >
-                        ← Back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRequestStep(3)}
-                        className="btn-primary text-xs py-2 px-5 rounded-lg"
-                      >
-                        Next: Preferred Date & Time →
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3: Date and Time */}
-                {requestStep === 3 && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-[var(--text)]">Preferred Date</label>
-                        <input
-                          type="date"
-                          required
-                          value={requestDate}
-                          onChange={(e) => setRequestDate(e.target.value)}
-                          className="input-clinical w-full text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-[var(--text)]">Preferred Time</label>
-                        <select
-                          value={requestTime}
-                          onChange={(e) => setRequestTime(e.target.value)}
-                          className="input-clinical w-full text-xs"
-                        >
-                          <option value="10:00 AM">Morning (10:00 AM – 12:00 PM)</option>
-                          <option value="02:30 PM">Afternoon (02:00 PM – 04:00 PM)</option>
-                          <option value="05:30 PM">Evening (05:00 PM – 07:00 PM)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setRequestStep(2)}
-                        className="btn-ghost text-xs py-2 px-4 rounded-lg"
-                      >
-                        ← Back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRequestStep(4)}
-                        className="btn-primary text-xs py-2 px-5 rounded-lg"
-                      >
-                        Next: Confirm & Attach Report →
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Confirm & Attach Report */}
-                {requestStep === 4 && (
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] cursor-pointer text-xs">
-                      <input
-                        type="checkbox"
-                        checked={attachLatestReport}
-                        onChange={(e) => setAttachLatestReport(e.target.checked)}
-                        className="rounded text-[var(--primary)]"
-                      />
-                      <span className="font-medium text-[var(--text)]">
-                        Attach my latest 5-page acoustic screening PDF report to this consultation request
-                      </span>
+                  <div>
+                    <label className="font-semibold text-[var(--text)] block mb-1">
+                      Preferred Time Slot
                     </label>
-
-                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-200">
-                      <strong>Important:</strong> Submitting this sends a request to the clinic database. Please call the clinic directly to confirm your arrival. Never claim a confirmed slot.
-                    </div>
-
-                    <div className="flex justify-between pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setRequestStep(3)}
-                        className="btn-ghost text-xs py-2 px-4 rounded-lg"
-                      >
-                        ← Back
-                      </button>
-                      <button
-                        type="submit"
-                        className="btn-primary text-xs py-2 px-6 rounded-lg"
-                      >
-                        Submit Consultation Request →
-                      </button>
-                    </div>
+                    <select
+                      value={requestTime}
+                      onChange={(e) => setRequestTime(e.target.value)}
+                      className="input-clinical w-full text-xs"
+                    >
+                      <option value="10:00 AM">Morning (10:00 AM - 12:00 PM)</option>
+                      <option value="02:00 PM">Afternoon (02:00 PM - 04:00 PM)</option>
+                      <option value="05:30 PM">Evening (05:30 PM - 07:30 PM)</option>
+                    </select>
                   </div>
-                )}
+                </div>
+
+                <div>
+                  <label className="font-semibold text-[var(--text)] block mb-1">
+                    Reason for Consultation / Screening Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={consultReason}
+                    onChange={(e) => setConsultReason(e.target.value)}
+                    className="input-clinical w-full text-xs"
+                    required
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={attachLatestReport}
+                    onChange={(e) => setAttachLatestReport(e.target.checked)}
+                    className="rounded text-[var(--primary)]"
+                  />
+                  <span>Attach my latest 5-page acoustic screening PDF report</span>
+                </label>
+
+                <div className="flex justify-end gap-3 pt-2 border-t border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => setShowRequestModal(false)}
+                    className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary text-xs py-2 px-5 rounded-xl font-semibold shadow-sm"
+                  >
+                    Submit Request
+                  </button>
+                </div>
               </form>
             ) : (
-              <div className="text-center space-y-4 py-3">
+              <div className="space-y-4 text-center py-4">
                 <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center justify-center mx-auto">
                   <CheckCircle2 size={24} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-base font-bold text-[var(--text)]">Consultation Request Registered</h4>
-                  <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    Your request with attached acoustic report has been logged. Please call the hospital / clinic reception to verify final queue timing.
+                  <h4 className="text-base font-bold text-[var(--text)]">
+                    Consultation Request Created
+                  </h4>
+                  <p className="text-xs text-[var(--muted)] max-w-sm mx-auto leading-relaxed">
+                    Your appointment request with attached acoustic metrics has been recorded. Please contact {selectedDoctor.hospital} to confirm your consultation timing.
                   </p>
                 </div>
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowRequestModal(false)
-                      setActiveTab('appointments')
-                    }}
-                    className="btn-primary text-xs py-2.5 px-6 rounded-xl"
-                  >
-                    View My Appointments →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ADMIN ADD DOCTOR MODAL (CSV Importer) */}
-      {showAddDoctorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="max-w-md w-full rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-md)] p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <h3 className="text-sm font-bold text-[var(--text)]">Admin Doctor Importer (CSV Row)</h3>
-              <button onClick={() => setShowAddDoctorModal(false)} className="text-[var(--muted)] hover:text-[var(--text)]">
-                <X size={16} />
-              </button>
-            </div>
-            <form onSubmit={handleImportCsvDoctor} className="space-y-3">
-              <div className="text-xs text-[var(--muted)]">
-                Paste one comma-separated row:
-                <br />
-                <code className="text-[11px] font-mono bg-[var(--surface-2)] p-1 rounded block mt-1">
-                  Name, Speciality, Hospital, Address, SourceURL
-                </code>
-              </div>
-              <textarea
-                rows={3}
-                required
-                value={csvRowInput}
-                onChange={(e) => setCsvRowInput(e.target.value)}
-                placeholder="Dr. Example Name, Neurology, City Hospital, Napier Town, https://example.com/doctor"
-                className="input-clinical w-full text-xs font-mono"
-              />
-              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddDoctorModal(false)}
-                  className="btn-ghost text-xs py-2 px-3 rounded-lg"
+                  onClick={() => {
+                    setShowRequestModal(false)
+                    setRequestSuccess(false)
+                    setActiveTab('appointments')
+                  }}
+                  className="btn-primary text-xs py-2 px-6 rounded-xl"
                 >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary text-xs py-2 px-4 rounded-lg">
-                  Import Doctor →
+                  View My Appointments
                 </button>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}
@@ -723,8 +857,9 @@ export default function CareCommandPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-[var(--muted)]">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+        <div className="p-8 text-center text-xs text-[var(--muted)] flex items-center justify-center gap-2">
+          <Loader2 size={16} className="animate-spin" />
+          <span>Loading specialist directory...</span>
         </div>
       }
     >

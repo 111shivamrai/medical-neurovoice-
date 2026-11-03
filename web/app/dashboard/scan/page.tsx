@@ -16,6 +16,8 @@ import {
   X,
   Lock,
   Volume2,
+  VolumeX,
+  HelpCircle,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
@@ -36,9 +38,13 @@ export default function NewScreeningPage() {
   const [language, setLanguage] = useState<'hi' | 'en'>('hi')
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
 
-  // Step 2: Quality & Live Canvas
+  // Step 2: Surrounding environment & Noise Check
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [snrValue, setSnrValue] = useState(24)
+  const [snrValue, setSnrValue] = useState<number>(24) // Internal value, NEVER shown to user
+  const [micStatus, setMicStatus] = useState<'working' | 'not_detected'>('working')
+  const [showMicHelp, setShowMicHelp] = useState(false)
+  const [noiseStatus, setNoiseStatus] = useState<'quiet' | 'a_little_noisy' | 'too_loud'>('quiet')
+  const [isMeasuringNoise, setIsMeasuringNoise] = useState(false)
 
   // Step 3: Sequential Tasks A -> B -> C
   const [taskA, setTaskA] = useState<TaskState>({
@@ -142,7 +148,7 @@ export default function NewScreeningPage() {
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false)
 
-  // Step 2 Canvas Visualizer
+  // Step 2 Canvas Visualizer (No technical labels)
   useEffect(() => {
     if (step !== 2) return
     const canvas = canvasRef.current
@@ -155,7 +161,7 @@ export default function NewScreeningPage() {
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.lineWidth = 2
+      ctx.lineWidth = 2.5
       ctx.strokeStyle = '#0F8F8F'
       ctx.beginPath()
 
@@ -177,6 +183,67 @@ export default function NewScreeningPage() {
 
     render()
     return () => cancelAnimationFrame(animId)
+  }, [step])
+
+  // Step 2 Initial check for microphone and ambient noise
+  const checkMicrophoneAndNoise = async () => {
+    setIsMeasuringNoise(true)
+    try {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        setMicStatus('working')
+
+        // Measure live RMS energy to calibrate ambient noise
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
+        if (AudioCtxClass) {
+          const audioCtx = new AudioCtxClass()
+          const analyser = audioCtx.createAnalyser()
+          const source = audioCtx.createMediaStreamSource(stream)
+          source.connect(analyser)
+          analyser.fftSize = 256
+          const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+          setTimeout(() => {
+            analyser.getByteFrequencyData(dataArray)
+            let sum = 0
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]
+            const avg = sum / dataArray.length
+
+            // If ambient sound is very high
+            if (avg > 80) {
+              setSnrValue(9)
+              setNoiseStatus('too_loud')
+            } else if (avg > 45) {
+              setSnrValue(16)
+              setNoiseStatus('a_little_noisy')
+            } else {
+              setSnrValue(24)
+              setNoiseStatus('quiet')
+            }
+            stream.getTracks().forEach((t) => t.stop())
+            setIsMeasuringNoise(false)
+          }, 800)
+        } else {
+          setNoiseStatus('quiet')
+          setSnrValue(24)
+          stream.getTracks().forEach((t) => t.stop())
+          setIsMeasuringNoise(false)
+        }
+      } else {
+        setMicStatus('not_detected')
+        setIsMeasuringNoise(false)
+      }
+    } catch {
+      // Permission denied or device not found
+      setMicStatus('not_detected')
+      setIsMeasuringNoise(false)
+    }
+  }
+
+  useEffect(() => {
+    if (step === 2) {
+      checkMicrophoneAndNoise()
+    }
   }, [step])
 
   // Web Audio API soft chime for Task C (15s minimum mark)
@@ -207,7 +274,6 @@ export default function NewScreeningPage() {
     minDuration: number,
     recordedSec: number
   ): Promise<{ ok: boolean; error?: string; actualDuration: number }> => {
-    // Check 1: Duration check
     const durationToTest = Math.max(recordedSec, 0)
     if (durationToTest < minDuration) {
       return {
@@ -231,11 +297,11 @@ export default function NewScreeningPage() {
         return {
           ok: false,
           error: `Recording too short (${audioDuration.toFixed(1)}s). Please speak for at least ${minDuration} seconds.`,
-          actualDuration: audioDuration,
+          actualDuration: Number(audioDuration.toFixed(1)),
         }
       }
 
-      // Check 2: Amplitude / Voice Detected
+      // Voice Amplitude / Voice Detected check
       const channel = audioBuffer.getChannelData(0)
       let sumSq = 0
       let peak = 0
@@ -254,22 +320,21 @@ export default function NewScreeningPage() {
         return {
           ok: false,
           error: 'No voice detected. Please check your microphone and speak clearly.',
-          actualDuration: audioDuration,
+          actualDuration: Number(audioDuration.toFixed(1)),
         }
       }
 
-      // Check 3: Room Noise Check (SNR > 10dB)
-      if (snrValue < 10) {
+      // Room Noise Check
+      if (snrValue < 12) {
         return {
           ok: false,
-          error: 'Background noise is too high (SNR < 10 dB). Please move to a quieter spot and try again.',
-          actualDuration: audioDuration,
+          error: 'Background noise is too high. Please move to a quieter spot and try again.',
+          actualDuration: Number(audioDuration.toFixed(1)),
         }
       }
 
       return { ok: true, actualDuration: Number(audioDuration.toFixed(1)) }
     } catch {
-      // In case decoding fails on unsupported browser codecs, accept recorded duration if valid
       if (durationToTest < minDuration) {
         return {
           ok: false,
@@ -327,7 +392,6 @@ export default function NewScreeningPage() {
         })
       }, 1000)
     } catch {
-      // Microphone mock for environments where hardware is not available
       timerRef.current = setInterval(() => {
         setTimerCount((prev) => {
           const next = prev + 1
@@ -351,7 +415,6 @@ export default function NewScreeningPage() {
       mediaRecorderRef.current.stop()
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
     } else if (currentTask) {
-      // Fallback synthetic wave blob for offline testing
       const mockBlob = new Blob(['sample-acoustic-bytes-verified'], { type: 'audio/wav' })
       handleTaskRecordingFinished(currentTask, mockBlob)
     }
@@ -367,11 +430,26 @@ export default function NewScreeningPage() {
     if (!result.ok) {
       const err = result.error || 'Recording does not meet acoustic quality criteria.'
       if (taskId === 'a') {
-        setTaskA((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+        setTaskA((prev) => ({
+          ...prev,
+          status: 'error',
+          duration: result.actualDuration,
+          errorMessage: err,
+        }))
       } else if (taskId === 'b') {
-        setTaskB((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+        setTaskB((prev) => ({
+          ...prev,
+          status: 'error',
+          duration: result.actualDuration,
+          errorMessage: err,
+        }))
       } else if (taskId === 'c') {
-        setTaskC((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+        setTaskC((prev) => ({
+          ...prev,
+          status: 'error',
+          duration: result.actualDuration,
+          errorMessage: err,
+        }))
       }
       return
     }
@@ -386,7 +464,6 @@ export default function NewScreeningPage() {
         duration: result.actualDuration,
         errorMessage: null,
       })
-      // Unlock Task B
       setTaskB((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
     } else if (taskId === 'b') {
       setTaskB({
@@ -396,7 +473,6 @@ export default function NewScreeningPage() {
         duration: result.actualDuration,
         errorMessage: null,
       })
-      // Unlock Task C
       setTaskC((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
     } else if (taskId === 'c') {
       setTaskC({
@@ -463,7 +539,7 @@ export default function NewScreeningPage() {
         setReportId(data.id || reportId)
         if (data.snrDb) setSnrValue(data.snrDb)
 
-        if (data.isInconclusive || (data.snrDb && data.snrDb < 10)) {
+        if (data.isInconclusive || (data.snrDb && data.snrDb < 12)) {
           setIsInconclusive(true)
           setConfidence('low')
           setConditionBands({
@@ -494,15 +570,16 @@ export default function NewScreeningPage() {
     } catch {
       // Offline fallback defaults retained
     } finally {
+      // TASK 8: Advance to Step 5 result summary for user to read first.
+      // Do NOT auto-popup the completion modal here!
       setTimeout(() => {
         setStep(5)
-        setShowCompletionModal(true)
       }, 4800)
     }
   }
 
   const pipelineStagesList = [
-    'Audio Validation & Noise Suppression (nr.reduce_noise)',
+    'Audio Validation & Noise Suppression',
     '25ms Phonetic Windowing & Voice Activity Segmentation',
     'Praat Parselmouth Acoustic Extraction (F0, Jitter, Shimmer, HNR)',
     'Formant Centralization Analysis (F1, F2 Vowel Triangle)',
@@ -528,6 +605,11 @@ export default function NewScreeningPage() {
   const hasActionableConditions = Object.values(conditionBands).some(
     (c) => c.band === 'Moderate' || c.band === 'Elevated' || c.band === 'High'
   )
+
+  // Derived recording environment readiness (Task 6)
+  const isEnvReady = micStatus === 'working' && noiseStatus === 'quiet'
+  const isEnvWarning = micStatus === 'working' && noiseStatus === 'a_little_noisy'
+  const isEnvBlocked = micStatus === 'not_detected' || noiseStatus === 'too_loud'
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
@@ -626,75 +708,284 @@ export default function NewScreeningPage() {
               onClick={() => setStep(2)}
               className="btn-primary text-xs py-3 px-8 rounded-xl shadow-sm"
             >
-              Continue to Microphone Check →
+              Continue to Surroundings Check →
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 2: CHECK MICROPHONE AND ROOM NOISE */}
+      {/* ──────────────── STEP 2: LET'S CHECK YOUR SURROUNDINGS (TASK 6) ──────────────── */}
       {step === 2 && (
         <div className="space-y-6">
-          <div className="text-center max-w-md mx-auto space-y-1.5">
+          <div className="text-center max-w-lg mx-auto space-y-1.5">
             <h2 className="text-xl font-display font-bold text-[var(--text)]">
-              Check your microphone and room noise
+              Let&apos;s check your surroundings
             </h2>
-            <p className="text-xs text-[var(--muted)]">
-              We verify acoustic clarity and ambient room noise to ensure reliable vocal extraction.
+            <p className="text-xs text-[var(--muted)] leading-relaxed">
+              For the most accurate result, we need to check that your microphone is working and your room is quiet enough.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] max-w-2xl mx-auto space-y-6">
-            <div className="h-32 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] p-4 flex flex-col justify-between relative overflow-hidden">
-              <div className="flex items-center justify-between text-xs font-mono text-[var(--muted)] z-10">
-                <span className="flex items-center gap-1.5 text-[var(--accent)] font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
-                  Live Input Oscilloscope
-                </span>
-                <span>44.1 kHz / 16-bit</span>
-              </div>
-              <canvas ref={canvasRef} width={600} height={120} className="w-full h-20" />
+          <div className="p-6 sm:p-7 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] max-w-2xl mx-auto space-y-6">
+            {/* Pure Live Waveform Canvas — No technical labels on it */}
+            <div className="h-28 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] p-2 flex items-center justify-center relative overflow-hidden">
+              <canvas ref={canvasRef} width={600} height={100} className="w-full h-20 opacity-80" />
             </div>
 
-            {/* SNR Meter */}
-            <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="w-3.5 h-3.5 rounded-full bg-[var(--success)]" />
-                <div>
-                  <div className="text-xs font-bold text-[var(--text)]">
-                    Room Noise Status: Optimal
+            {/* Three Simple Status Rows */}
+            <div className="space-y-3">
+              {/* ROW 1: MICROPHONE */}
+              <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
+                        micStatus === 'working'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                      }`}
+                    >
+                      <Mic size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[var(--text)]">Microphone</div>
+                      <div className="text-[11px] text-[var(--muted)]">
+                        {micStatus === 'working' ? 'Microphone is active and ready' : 'Your microphone is not available'}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-[var(--muted)]">
-                    Minimal background interference. Ready for voice capture.
+
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      micStatus === 'working'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
+                    }`}
+                  >
+                    {micStatus === 'working' ? 'Working ✓' : 'Not detected ✗'}
+                  </span>
+                </div>
+
+                {/* If Not Detected: Explanation & Expandable Help */}
+                {micStatus === 'not_detected' && (
+                  <div className="mt-2 pt-2 border-t border-[var(--border)] text-xs text-red-700 dark:text-red-300 space-y-2">
+                    <p>
+                      Check that your microphone is connected and your browser has granted microphone permission.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowMicHelp(!showMicHelp)}
+                      className="text-xs font-semibold text-[var(--primary)] hover:underline flex items-center gap-1"
+                    >
+                      <span>How to allow microphone access</span>
+                      <ArrowRight size={13} />
+                    </button>
+
+                    {showMicHelp && (
+                      <div className="p-3 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[11px] text-[var(--muted)] space-y-1.5">
+                        <div><strong>Chrome / Edge:</strong> Click the tune/lock icon on the left of the address bar, set &quot;Microphone&quot; to <strong>Allow</strong>, then refresh.</div>
+                        <div><strong>Safari:</strong> Go to Safari Settings → Websites → Microphone, and choose <strong>Allow</strong> for this site.</div>
+                        <div><strong>Firefox:</strong> Click the microphone permission icon in the address bar and select <strong>Allow</strong>.</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ROW 2: BACKGROUND NOISE (Quiet / A little noisy / Too loud — NEVER show raw SNR) */}
+              <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
+                      noiseStatus === 'quiet'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : noiseStatus === 'a_little_noisy'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                    }`}
+                  >
+                    {noiseStatus === 'too_loud' ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[var(--text)]">Background noise</div>
+                    <div className="text-[11px] text-[var(--muted)]">
+                      {noiseStatus === 'quiet' && 'Quiet — great for recording'}
+                      {noiseStatus === 'a_little_noisy' && 'A little noisy — results may vary'}
+                      {noiseStatus === 'too_loud' && 'Too loud — please move somewhere quieter'}
+                    </div>
                   </div>
                 </div>
+
+                <span
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    noiseStatus === 'quiet'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      : noiseStatus === 'a_little_noisy'
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+                      : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
+                  }`}
+                >
+                  {noiseStatus === 'quiet' && 'Quiet'}
+                  {noiseStatus === 'a_little_noisy' && 'A little noisy'}
+                  {noiseStatus === 'too_loud' && 'Too loud'}
+                </span>
               </div>
-              <span className="text-xs font-mono font-bold text-[var(--success)]">
-                SNR: {snrValue} dB
-              </span>
+
+              {/* ROW 3: RECORDING ENVIRONMENT (Ready / Not ready) */}
+              <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`w-3.5 h-3.5 rounded-full ${
+                      isEnvReady
+                        ? 'bg-[var(--success)]'
+                        : isEnvWarning
+                        ? 'bg-[var(--warning)]'
+                        : 'bg-[var(--danger)]'
+                    }`}
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-[var(--text)]">Recording environment</div>
+                    <div className="text-[11px] text-[var(--muted)]">
+                      {isEnvReady && 'Everything looks great for a clear recording'}
+                      {isEnvWarning && 'Room has moderate background sound'}
+                      {isEnvBlocked && 'Environment is not ready for voice capture'}
+                    </div>
+                  </div>
+                </div>
+
+                <span
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    isEnvReady
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      : isEnvWarning
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+                      : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
+                  }`}
+                >
+                  {isEnvReady ? 'Ready ✓' : isEnvWarning ? 'Acceptable' : 'Not ready ✗'}
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="btn-ghost text-xs py-2 px-4 rounded-xl"
-              >
-                ← Back
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep(3)}
-                className="btn-primary text-xs py-2.5 px-6 rounded-xl shadow-sm"
-              >
-                Proceed to Guided Tasks →
-              </button>
+            {/* ACTION / PROCEED LOGIC ACCORDING TO TASK 6 */}
+            <div className="pt-2 border-t border-[var(--border)] space-y-3">
+              {/* Condition 1: Mic Working AND Noise = Quiet */}
+              {isEnvReady && (
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="btn-primary text-xs py-2.5 px-6 rounded-xl shadow-sm"
+                  >
+                    Proceed to Recording →
+                  </button>
+                </div>
+              )}
+
+              {/* Condition 2: Mic Working AND Noise = A Little Noisy */}
+              {isEnvWarning && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStep(3)}
+                      className="border border-amber-400 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs py-2.5 px-5 rounded-xl font-semibold transition-colors"
+                    >
+                      Proceed anyway — I accept the risk
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[var(--muted)] text-right">
+                    Recording in a noisy room may reduce accuracy. We recommend moving somewhere quieter.
+                  </p>
+                </div>
+              )}
+
+              {/* Condition 3: Noise = Too Loud */}
+              {micStatus === 'working' && noiseStatus === 'too_loud' && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300">
+                    The background noise is too loud for reliable analysis. Please move to a quieter room and check again.
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                    >
+                      ← Back
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={checkMicrophoneAndNoise}
+                        disabled={isMeasuringNoise}
+                        className="btn-ghost text-xs py-2 px-4 rounded-xl flex items-center gap-1.5"
+                      >
+                        <RotateCcw size={14} className={isMeasuringNoise ? 'animate-spin' : ''} />
+                        <span>Check again</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        className="bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed text-xs py-2.5 px-6 rounded-xl font-semibold"
+                      >
+                        Proceed to Recording →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Condition 4: Mic Not Detected */}
+              {micStatus === 'not_detected' && (
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="btn-ghost text-xs py-2 px-4 rounded-xl"
+                  >
+                    ← Back
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={checkMicrophoneAndNoise}
+                      disabled={isMeasuringNoise}
+                      className="btn-ghost text-xs py-2 px-4 rounded-xl flex items-center gap-1.5"
+                    >
+                      <RotateCcw size={14} className={isMeasuringNoise ? 'animate-spin' : ''} />
+                      <span>Retry microphone</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed text-xs py-2.5 px-6 rounded-xl font-semibold"
+                    >
+                      Proceed to Recording →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* STEP 3: STRICTLY SEQUENTIAL GUIDED VOCAL TASKS (TASK A -> TASK B -> TASK C) */}
+      {/* ──────────────── STEP 3: GUIDED VOCAL TASKS (TASK 7) ──────────────── */}
       {step === 3 && (
         <div className="space-y-6">
           <div className="text-center max-w-md mx-auto space-y-1.5">
@@ -707,7 +998,7 @@ export default function NewScreeningPage() {
           </div>
 
           <div className="max-w-2xl mx-auto space-y-5">
-            {/* ──────────────── TASK A: SUSTAINED VOWEL ──────────────── */}
+            {/* ──────── TASK A: HOLD THE SOUND (Renamed per Task 7) ──────── */}
             <div
               className={`p-6 rounded-2xl border transition-all ${
                 taskA.status === 'passed'
@@ -728,18 +1019,26 @@ export default function NewScreeningPage() {
                   </span>
                   <div>
                     <h3 className="text-sm font-bold text-[var(--text)]">
-                      Task A: Hold the &quot;Aah&quot; sound
+                      Task A: Hold the sound
                     </h3>
                     <span className="text-[11px] text-[var(--muted)] font-mono">
-                      Minimum required duration: 3 seconds · Measures vocal fold stability & tremor
+                      Minimum required duration: 3 seconds
                     </span>
                   </div>
                 </div>
 
-                {taskA.status === 'passed' && (
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center gap-1">
-                    <CheckCircle2 size={13} />
-                    Verified ({taskA.duration}s)
+                {/* Real-time Duration Counter per Task 7 */}
+                {taskA.duration > 0 && (
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                      taskA.status === 'passed'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
+                    }`}
+                  >
+                    {taskA.status === 'passed'
+                      ? `Recorded: ${taskA.duration.toFixed(1)} seconds ✓`
+                      : `Recorded: ${taskA.duration.toFixed(1)} seconds ✗ Too short`}
                   </span>
                 )}
               </div>
@@ -789,13 +1088,13 @@ export default function NewScreeningPage() {
                     </button>
                     {activeRecordingTask === 'a' && (
                       <span className="text-xs font-mono text-[var(--muted)] animate-pulse">
-                        Listening for steady phonation...
+                        Listening for steady sound...
                       </span>
                     )}
                   </div>
                 </div>
               ) : (
-                /* Passed State Preview */
+                /* Passed State Preview with listen back playback bar */
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
                   {taskA.url && <audio controls src={taskA.url} className="h-9 w-full sm:w-72" />}
                   <button
@@ -810,7 +1109,7 @@ export default function NewScreeningPage() {
               )}
             </div>
 
-            {/* ──────────────── TASK B: SENTENCE READING ──────────────── */}
+            {/* ──────── TASK B: READ THIS ALOUD (Renamed per Task 7) ──────── */}
             <div
               className={`p-6 rounded-2xl border transition-all ${
                 taskB.status === 'locked'
@@ -841,10 +1140,10 @@ export default function NewScreeningPage() {
                   </span>
                   <div>
                     <h3 className="text-sm font-bold text-[var(--text)]">
-                      Task B: Read this sentence aloud
+                      Task B: Read this aloud
                     </h3>
                     <span className="text-[11px] text-[var(--muted)] font-mono">
-                      Minimum required duration: 2 seconds · Measures consonant precision & vowel articulation
+                      Minimum required duration: 2 seconds
                     </span>
                   </div>
                 </div>
@@ -854,10 +1153,17 @@ export default function NewScreeningPage() {
                     Complete Task A to unlock
                   </span>
                 )}
-                {taskB.status === 'passed' && (
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center gap-1">
-                    <CheckCircle2 size={13} />
-                    Verified ({taskB.duration}s)
+                {taskB.duration > 0 && (
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                      taskB.status === 'passed'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
+                    }`}
+                  >
+                    {taskB.status === 'passed'
+                      ? `Recorded: ${taskB.duration.toFixed(1)} seconds ✓`
+                      : `Recorded: ${taskB.duration.toFixed(1)} seconds ✗ Too short`}
                   </span>
                 )}
               </div>
@@ -907,7 +1213,7 @@ export default function NewScreeningPage() {
                     </button>
                     {activeRecordingTask === 'b' && (
                       <span className="text-xs font-mono text-[var(--muted)] animate-pulse">
-                        Listening for reading cadence...
+                        Listening for reading voice...
                       </span>
                     )}
                   </div>
@@ -929,7 +1235,7 @@ export default function NewScreeningPage() {
               )}
             </div>
 
-            {/* ──────────────── TASK C: TALK ABOUT YOUR MORNING (15s Monologue) ──────────────── */}
+            {/* ──────── TASK C: TALK FOR A MOMENT (Renamed per Task 7) ──────── */}
             <div
               className={`p-6 rounded-2xl border transition-all ${
                 taskC.status === 'locked'
@@ -960,10 +1266,10 @@ export default function NewScreeningPage() {
                   </span>
                   <div>
                     <h3 className="text-sm font-bold text-[var(--text)]">
-                      Task C: Talk about your morning
+                      Task C: Talk for a moment
                     </h3>
                     <span className="text-[11px] text-[var(--muted)] font-mono">
-                      Minimum required duration: 15 seconds · Measures conversational pause patterns & speech flow
+                      Minimum required duration: 15 seconds
                     </span>
                   </div>
                 </div>
@@ -973,10 +1279,17 @@ export default function NewScreeningPage() {
                     Complete Task B to unlock
                   </span>
                 )}
-                {taskC.status === 'passed' && (
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center gap-1">
-                    <CheckCircle2 size={13} />
-                    Verified ({taskC.duration}s)
+                {taskC.duration > 0 && (
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                      taskC.status === 'passed'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
+                    }`}
+                  >
+                    {taskC.status === 'passed'
+                      ? `Recorded: ${taskC.duration.toFixed(1)} seconds ✓`
+                      : `Recorded: ${taskC.duration.toFixed(1)} seconds ✗ Too short`}
                   </span>
                 )}
               </div>
@@ -994,7 +1307,7 @@ export default function NewScreeningPage() {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-[var(--danger)] animate-ping" />
                     <span className="text-xs font-semibold text-[var(--text)]">
-                      Recording Monologue:
+                      Recording speech:
                     </span>
                   </div>
                   <div
@@ -1040,7 +1353,7 @@ export default function NewScreeningPage() {
                       ) : (
                         <>
                           <Mic size={15} />
-                          <span>Record Monologue (Min 15s)</span>
+                          <span>Record Speech (Min 15s)</span>
                         </>
                       )}
                     </button>
@@ -1068,7 +1381,7 @@ export default function NewScreeningPage() {
               )}
             </div>
 
-            {/* ──────────────── SUMMARY CARD AND ANALYSE BUTTON (SHOWN ONLY WHEN ALL 3 PASS) ──────────────── */}
+            {/* ──────── SUMMARY CARD AND SINGLE ANALYSE BUTTON (SHOWN ONLY WHEN ALL 3 PASS) ──────── */}
             {areAllTasksCompleted && (
               <div className="p-6 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-800 shadow-sm space-y-4 animate-in fade-in zoom-in-95">
                 <div className="space-y-1.5">
@@ -1077,9 +1390,9 @@ export default function NewScreeningPage() {
                     <span>All three voice samples verified successfully</span>
                   </div>
                   <div className="text-xs font-mono text-[var(--muted)] pl-6 space-y-0.5">
-                    <div>✓ Task A: Sustained phonation verified ({taskA.duration}s)</div>
-                    <div>✓ Task B: Sentence reading verified ({taskB.duration}s)</div>
-                    <div>✓ Task C: Free speech monologue verified ({taskC.duration}s)</div>
+                    <div>✓ Task A: Hold the sound verified ({taskA.duration.toFixed(1)}s)</div>
+                    <div>✓ Task B: Read this aloud verified ({taskB.duration.toFixed(1)}s)</div>
+                    <div>✓ Task C: Talk for a moment verified ({taskC.duration.toFixed(1)}s)</div>
                   </div>
                   <p className="text-xs text-[var(--muted)] pl-6 pt-1">
                     All three voice samples captured. Ready for multi-stage acoustic analysis.
@@ -1102,7 +1415,7 @@ export default function NewScreeningPage() {
         </div>
       )}
 
-      {/* STEP 4: REAL-TIME PIPELINE PROGRESS */}
+      {/* ──────────────── STEP 4: REAL-TIME PIPELINE PROGRESS ──────────────── */}
       {step === 4 && (
         <div className="p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] max-w-xl mx-auto space-y-6 text-center">
           <div className="w-14 h-14 rounded-2xl bg-[var(--surface-2)] text-[var(--primary)] flex items-center justify-center mx-auto shadow-sm">
@@ -1145,7 +1458,7 @@ export default function NewScreeningPage() {
         </div>
       )}
 
-      {/* STEP 5: RESULTS — TWO-LINE FORMAT, NEVER RAW SCORE NUMBERS, SHAP DIRECTION ARROWS */}
+      {/* ──────────────── STEP 5: RESULTS (USER READS FIRST PER TASK 8) ──────────────── */}
       {step === 5 && (
         <div className="space-y-8 animate-in fade-in duration-200">
           {/* Top Status Banner */}
@@ -1166,7 +1479,7 @@ export default function NewScreeningPage() {
               </div>
 
               <div className="text-xs font-mono text-[var(--muted)]">
-                Report ID: {reportId} · Signal Quality: {snrValue} dB ({confidence.toUpperCase()} confidence)
+                Report ID: {reportId} · Signal Quality: {confidence === 'high' ? 'Optimal' : 'Acceptable'}
               </div>
             </div>
 
@@ -1274,7 +1587,7 @@ export default function NewScreeningPage() {
 
               {/* Line 2: Small Technical */}
               <div className="text-[11px] font-mono text-[var(--muted)] pt-1 border-t border-[var(--border)]">
-                Formant Space Area: Calibrated · Consonant Transition ZCR: {extractedFeatures.zcr} · Shimmer dB: {extractedFeatures.shimmer_db || '0.24'}
+                Formant Space Area: Calibrated · Consonant Transition ZCR: {extractedFeatures.zcr} · Shimmer: {extractedFeatures.shimmer_local_percent}%
               </div>
             </div>
 
@@ -1311,7 +1624,7 @@ export default function NewScreeningPage() {
             </div>
           </div>
 
-          {/* WHAT INFLUENCED THIS RESULT (Real SHAP with directional arrows) */}
+          {/* WHAT INFLUENCED THIS RESULT (Directional arrows) */}
           <div className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <div>
@@ -1370,7 +1683,7 @@ export default function NewScreeningPage() {
             </div>
           </div>
 
-          {/* WHAT YOU CAN DO (SUGGESTIONS SECTION IF ANY CONDITION IS MODERATE OR ELEVATED) */}
+          {/* WHAT YOU CAN DO (SUGGESTIONS IF ANY CONDITION IS MODERATE OR ELEVATED) */}
           {hasActionableConditions && (
             <div className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-4">
               <div className="pb-3 border-b border-[var(--border)]">
@@ -1435,41 +1748,25 @@ export default function NewScreeningPage() {
             </div>
           )}
 
-          {/* Action Row */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm">
+          {/* ──────── BOTTOM OF STEP 5: WHAT TO DO NEXT BUTTON (TASK 8) ──────── */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm">
             <div className="space-y-0.5 text-center sm:text-left">
-              <div className="text-xs font-bold text-[var(--text)]">
-                Next Clinical Actions
+              <div className="text-sm font-bold text-[var(--text)]">
+                Finished reviewing your results?
               </div>
-              <div className="text-[11px] text-[var(--muted)]">
-                Export comprehensive 5-page clinical PDF report or share with your neurologist
+              <div className="text-xs text-[var(--muted)]">
+                See options to download your comprehensive clinical PDF report or connect with specialists.
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                disabled={isDownloadingPdf}
-                onClick={async () => {
-                  setIsDownloadingPdf(true)
-                  const localUser = getLocalUser()
-                  await downloadScreeningPdf(reportId, localUser?.displayName || 'Participant')
-                  setIsDownloadingPdf(false)
-                }}
-                className="btn-primary text-xs py-2.5 px-5 rounded-xl flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-              >
-                <FileDown size={14} className={isDownloadingPdf ? 'animate-bounce' : ''} />
-                <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download Clinical PDF'}</span>
-              </button>
-
-              <Link
-                href="/dashboard/care"
-                className="btn-ghost text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5"
-              >
-                <Calendar size={14} />
-                <span>Specialist Consultation</span>
-              </Link>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowCompletionModal(true)}
+              className="btn-primary text-xs py-3 px-7 rounded-xl flex items-center gap-2 shadow-md hover:brightness-105 active:scale-95"
+            >
+              <span>What to do next</span>
+              <ArrowRight size={15} />
+            </button>
           </div>
 
           {/* Collapsible Technical Model Indices */}
@@ -1484,9 +1781,9 @@ export default function NewScreeningPage() {
 
             {showTechnicalDetails && (
               <div className="pt-2 text-xs font-mono text-[var(--muted)] space-y-1.5 border-t border-[var(--border)]">
-                <div>Model Ensemble Weights: Task A Sustained Vowel (0.40) · Task B Sentence Reading (0.30) · Task C Monologue (0.30)</div>
+                <div>Model Ensemble Weights: Task A Hold Sound (0.40) · Task B Reading (0.30) · Task C Free Speech (0.30)</div>
                 <div>Acoustic Extraction: Librosa 16kHz + Praat Parselmouth 6.4 + Hann 25ms Windowing</div>
-                <div>Audio SNR: {snrValue} dB · Pitch Period Entropy: {extractedFeatures.ppe} · Recurrence Dynamics: {extractedFeatures.rpde}</div>
+                <div>Pitch Period Entropy: {extractedFeatures.ppe} · Recurrence Dynamics: {extractedFeatures.rpde}</div>
               </div>
             )}
           </div>
@@ -1498,7 +1795,7 @@ export default function NewScreeningPage() {
         </div>
       )}
 
-      {/* COMPLETION MODAL */}
+      {/* ──────────────── MODAL: WHAT TO DO NEXT (TASK 8) ──────────────── */}
       {showCompletionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="max-w-md w-full rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-md)] p-6 space-y-5 animate-in zoom-in-95">
@@ -1510,6 +1807,7 @@ export default function NewScreeningPage() {
                 type="button"
                 onClick={() => setShowCompletionModal(false)}
                 className="p-1 rounded-md text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+                aria-label="Close"
               >
                 <X size={16} />
               </button>
@@ -1520,10 +1818,10 @@ export default function NewScreeningPage() {
                 <CheckCircle2 size={24} />
               </div>
               <h3 className="text-xl font-display font-bold text-[var(--text)]">
-                Voice Report Ready
+                Your screening is complete
               </h3>
               <p className="text-xs text-[var(--muted)] leading-relaxed">
-                Your acoustic analysis is complete. You can download the 5-page clinical PDF report or connect with verified specialists.
+                Here is what you can do with your results:
               </p>
             </div>
 
@@ -1540,16 +1838,16 @@ export default function NewScreeningPage() {
                 className="btn-primary w-full py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
               >
                 <FileDown size={16} className={isDownloadingPdf ? 'animate-bounce' : ''} />
-                <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download Voice Report (PDF)'}</span>
+                <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download your voice report (PDF)'}</span>
               </button>
 
               <Link
-                href="/dashboard/care"
+                href="/dashboard/care?tab=doctors&condition=pd"
                 onClick={() => setShowCompletionModal(false)}
-                className="btn-ghost w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
+                className="btn-ghost w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-[var(--border)]"
               >
                 <Calendar size={15} />
-                <span>Request a Specialist Consultation</span>
+                <span>Find a specialist near you</span>
               </Link>
             </div>
 
@@ -1574,7 +1872,7 @@ export default function NewScreeningPage() {
                 onClick={() => setShowCompletionModal(false)}
                 className="hover:text-[var(--text)] font-medium"
               >
-                View screening history →
+                View my history →
               </Link>
             </div>
           </div>
@@ -1611,7 +1909,7 @@ export default function NewScreeningPage() {
                 <li><strong className="text-[var(--success)]">Low:</strong> All acoustic parameters align with typical reference baselines.</li>
                 <li><strong className="text-[var(--warning)]">Moderate:</strong> Mild perturbation observed. Periodic monitoring recommended.</li>
                 <li><strong className="text-[var(--danger)]">Elevated:</strong> Notable deviation in glottal or articulatory stability. Evaluation by a certified neurologist is advised.</li>
-                <li><strong>Inconclusive:</strong> Recording quality had an SNR &lt; 10 dB. Please re-record in a quiet room.</li>
+                <li><strong>Inconclusive:</strong> Recording quality had excessive background noise. Please re-record in a quiet room.</li>
               </ul>
 
               <h4 className="font-bold text-[var(--text)] pt-2">Clinical Notice:</h4>

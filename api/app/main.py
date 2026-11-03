@@ -10,6 +10,7 @@ from app.routes.patients import router as patients_router
 from app.routes.appointments import router as appointments_router
 from app.routes.doctors import router as doctors_router
 from app.routes.admin import router as admin_router
+from app.routes.assistant import router as assistant_router
 
 app = FastAPI(
     title="NeuroVoice API",
@@ -51,6 +52,7 @@ app.include_router(patients_router)
 app.include_router(appointments_router)
 app.include_router(doctors_router)
 app.include_router(admin_router)
+app.include_router(assistant_router)
 
 if __name__ == "__main__":
     import uvicorn
