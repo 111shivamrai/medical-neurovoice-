@@ -9,7 +9,7 @@ export default function ScientificMethodPage() {
       feature: 'Fundamental Frequency (F0) & Coeff of Variation',
       description: 'Quantifies vocal pitch stability and subglottic motor control over sustained phonation.',
       normal: 'F0 CV < 2.5%, Range: 85–255 Hz',
-      citation: 'Little et al. (2007) · IEEE TBME',
+      citation: 'Little et al. (2007) · Biomedical Engineering',
     },
     {
       feature: 'Local Jitter (Relative perturbation)',
@@ -21,7 +21,7 @@ export default function ScientificMethodPage() {
       feature: 'Local Shimmer & APQ (Amplitude perturbation)',
       description: 'Cycle-to-cycle peak amplitude fluctuation indicating incomplete glottal adduction.',
       normal: '< 3.07% to 3.81%',
-      citation: 'Tsanas et al. (2012) · IEEE TBME',
+      citation: 'Tsanas et al. (2012) · Biomedical Engineering',
     },
     {
       feature: 'Harmonics-to-Noise Ratio (HNR)',
@@ -48,10 +48,10 @@ export default function ScientificMethodPage() {
       citation: 'Horley et al. (2010) · Journal of Neurolinguistics',
     },
     {
-      feature: 'eGeMAPSv02 88-Feature Standard Vector',
+      feature: 'Standard Acoustic Functional Vector',
       description: 'Standardized clinical functionals including spectral flux, alpha ratio, and Hammarberg index.',
       normal: 'Normalized multi-dimensional acoustic centroid',
-      citation: 'Eyben et al. (2016) · IEEE Trans. Affective Computing',
+      citation: 'Eyben et al. (2016) · Acoustic Computing',
     },
   ]
 
@@ -88,7 +88,7 @@ export default function ScientificMethodPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             <div className="p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] space-y-2">
-              <span className="text-xs font-mono font-bold text-[var(--primary)] uppercase">Branch A · eGeMAPSv02</span>
+              <span className="text-xs font-mono font-bold text-[var(--primary)] uppercase">Branch A · Standard Acoustic Metrics</span>
               <p className="text-xs text-[var(--muted)] leading-relaxed">
                 Uses <strong>openSMILE</strong> to extract 88 standardized clinical functionals capturing spectral slope, loudness dynamics, and harmonic energy.
               </p>

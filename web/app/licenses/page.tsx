@@ -18,7 +18,7 @@ export default function LicensesPage() {
       category: 'Acoustic Feature Extraction',
       license: 'AudEERING Research / MIT License',
       author: 'audEERING GmbH',
-      details: 'Calculates the standardized 88 clinical eGeMAPSv02 (extended Geneva Minimalistic Acoustic Parameter Set) feature vector.',
+      details: 'Calculates standardized clinical acoustic parameter feature vectors.',
       link: 'https://www.audeering.com/research/opensmile/',
     },
     {

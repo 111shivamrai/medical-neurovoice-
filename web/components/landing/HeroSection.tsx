@@ -33,7 +33,7 @@ export function HeroSection() {
   return (
     <section
       id="hero"
-      className="relative min-h-[92vh] flex items-center justify-center pt-28 pb-16 bg-[var(--bg)] transition-colors duration-200"
+      className="hero-radial-bg relative min-h-[92vh] flex items-center justify-center pt-28 pb-16 transition-colors duration-200"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">

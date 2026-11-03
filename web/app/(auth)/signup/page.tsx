@@ -252,6 +252,9 @@ function SignUpContent() {
         email,
         displayName: fullName,
         photoURL: photoPreview || null,
+        gender: sex,
+        location: `${city || 'Jabalpur'}, ${stateName || 'Madhya Pradesh'}, India`,
+        createdAt: new Date().toISOString(),
         role,
         isDemo,
       })
@@ -272,6 +275,9 @@ function SignUpContent() {
           email,
           displayName: fullName,
           photoURL: photoPreview || null,
+          gender: sex,
+          location: `${city || 'Jabalpur'}, ${stateName || 'Madhya Pradesh'}, India`,
+          createdAt: new Date().toISOString(),
           role,
           isDemo: true,
         })

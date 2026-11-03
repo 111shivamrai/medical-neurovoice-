@@ -580,14 +580,14 @@ export default function NewScreeningPage() {
 
   const pipelineStagesList = [
     'Audio Validation & Noise Suppression',
-    '25ms Phonetic Windowing & Voice Activity Segmentation',
-    'Praat Parselmouth Acoustic Extraction (F0, Jitter, Shimmer, HNR)',
-    'Formant Centralization Analysis (F1, F2 Vowel Triangle)',
-    'Spectral Dynamics & Pitch Period Entropy (PPE / RPDE)',
-    'Speech Cadence & Conversational Pause Ratio Calculation',
-    'Clinical Literature Benchmark Verification (Little 2009, Kim 2008)',
-    '40% / 30% / 30% Multi-Task Aggregation & Band Conversion',
-    'Directional Feature Explainability & Clinical Next Steps',
+    'Voice Activity & Phonation Segmentation',
+    'Acoustic Steadiness Extraction (pitch, steadiness, volume consistency)',
+    'Vowel Precision Analysis (vowel clarity and formant stability)',
+    'Speech Flow & Cadence Dynamics (breath support, vocal energy)',
+    'Conversational Timing & Pause Ratio Calculation',
+    'Objective Clinical Benchmark Comparison',
+    'Multi-Task Acoustic Signal Weighting & Band Conversion',
+    'Feature Explanation & Clinical Next Steps',
   ]
 
   // Formatter for timer: "0:00 / 0:15 minimum"
@@ -1427,7 +1427,7 @@ export default function NewScreeningPage() {
               Computing Acoustic Biomarkers
             </h2>
             <p className="text-xs text-[var(--muted)]">
-              Executing openSMILE eGeMAPSv02 functionals, Praat Parselmouth phonetics, and multi-task score weighting.
+              Extracting voice steadiness, cadence pauses, and clinical acoustic biomarkers.
             </p>
           </div>
 
@@ -1521,9 +1521,9 @@ export default function NewScreeningPage() {
                   : 'Elevated acoustic tremor variation detected in your voice'}
               </div>
 
-              {/* Line 2: Small Technical */}
+              {/* Line 2: Small Technical with Dual Layer */}
               <div className="text-[11px] font-mono text-[var(--muted)] pt-1 border-t border-[var(--border)]">
-                Jitter: {extractedFeatures.jitter_local_percent}% (ref &lt; 1.04%) · Shimmer: {extractedFeatures.shimmer_local_percent}% (ref &lt; 3.07%) · HNR: {extractedFeatures.hnr} dB (ref &gt; 20 dB)
+                <span className="term">Jitter</span> <span className="term-plain">(steadiness)</span>: {extractedFeatures.jitter_local_percent}% (ref &lt; 1.04%) · <span className="term">Shimmer</span> <span className="term-plain">(volume consistency)</span>: {extractedFeatures.shimmer_local_percent}% (ref &lt; 3.07%) · <span className="term">HNR</span> <span className="term-plain">(voice clarity)</span>: {extractedFeatures.hnr} dB (ref &gt; 20 dB)
               </div>
             </div>
 
@@ -1553,9 +1553,9 @@ export default function NewScreeningPage() {
                   : 'Elevated conversational pauses and slowed articulation flow'}
               </div>
 
-              {/* Line 2: Small Technical */}
+              {/* Line 2: Small Technical with Dual Layer */}
               <div className="text-[11px] font-mono text-[var(--muted)] pt-1 border-t border-[var(--border)]">
-                Pause Ratio: {extractedFeatures.pause_ratio} (ref &lt; 0.28) · Speech Rate: {extractedFeatures.speech_rate} syl/s (ref &gt; 3.5 syl/s)
+                <span className="term">Pause Ratio</span> <span className="term-plain">(conversational cadence)</span>: {extractedFeatures.pause_ratio} (ref &lt; 0.28) · <span className="term">Speech Rate</span> <span className="term-plain">(pace)</span>: {extractedFeatures.speech_rate} syl/s (ref &gt; 3.5 syl/s)
               </div>
             </div>
 
@@ -1585,9 +1585,9 @@ export default function NewScreeningPage() {
                   : 'Elevated articulatory vowel reduction and muscle coordination changes'}
               </div>
 
-              {/* Line 2: Small Technical */}
+              {/* Line 2: Small Technical with Dual Layer */}
               <div className="text-[11px] font-mono text-[var(--muted)] pt-1 border-t border-[var(--border)]">
-                Formant Space Area: Calibrated · Consonant Transition ZCR: {extractedFeatures.zcr} · Shimmer: {extractedFeatures.shimmer_local_percent}%
+                <span className="term">Formants</span> <span className="term-plain">(vowel precision)</span>: Calibrated · <span className="term">Consonant Transition</span> <span className="term-plain">(articulation edge)</span>: {extractedFeatures.zcr}
               </div>
             </div>
 
@@ -1617,9 +1617,9 @@ export default function NewScreeningPage() {
                   : 'Elevated vocal energy drop and irregular phrase continuity'}
               </div>
 
-              {/* Line 2: Small Technical */}
+              {/* Line 2: Small Technical with Dual Layer */}
               <div className="text-[11px] font-mono text-[var(--muted)] pt-1 border-t border-[var(--border)]">
-                Pitch Period Entropy (PPE): {extractedFeatures.ppe} (ref &lt; 0.20) · RPDE: {extractedFeatures.rpde} (ref &lt; 0.45)
+                <span className="term">F0 Stability</span> <span className="term-plain">(pitch variation)</span>: {extractedFeatures.ppe} (ref &lt; 0.20) · <span className="term">RPDE</span> <span className="term-plain">(periodicity entropy)</span>: {extractedFeatures.rpde} (ref &lt; 0.45)
               </div>
             </div>
           </div>

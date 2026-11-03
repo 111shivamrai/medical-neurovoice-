@@ -84,7 +84,7 @@ export function PipelineSection() {
       plainText:
         'We measure vocal pitch tremor, loudness fluctuation, and breathiness using the exact same phonetic standards used in neurology clinics.',
       technicalDetails:
-        'Extracts 88 clinical eGeMAPSv02 functionals via openSMILE, alongside native Praat Parselmouth F0, Jitter (local), Shimmer (local), HNR (dB), and Formants (F1–F3).',
+        'Extracts clinical acoustic functionals alongside voice pitch stability, Jitter (steadiness), Shimmer (volume stability), HNR (clarity), and Formants (vowel precision).',
       icon: Cpu,
     },
     {
@@ -104,7 +104,7 @@ export function PipelineSection() {
       plainText:
         'We compare your measurements against validated peer-reviewed ranges for each condition to determine if any metric is atypical.',
       technicalDetails:
-        'Ensemble combines eGeMAPSv02 (45%), native phonetics (35%), and wav2vec (20%) using peer-reviewed biomarker decision thresholds.',
+        'Ensemble combines standardized acoustic parameters (45%), native phonetics (35%), and temporal cadence (20%) using peer-reviewed biomarker decision thresholds.',
       icon: Sparkles,
     },
     {

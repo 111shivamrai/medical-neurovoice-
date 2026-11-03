@@ -14,6 +14,9 @@ export interface UserSession {
   email: string | null
   displayName: string | null
   photoURL?: string | null
+  gender?: 'Male' | 'Female' | 'Prefer not to say' | string | null
+  location?: string | null
+  createdAt?: string | null
   role?: string
   isDemo?: boolean
 }
@@ -75,11 +78,16 @@ export function subscribeToAuth(callback: (user: UserSession | null) => void) {
   try {
     unsubFirebase = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
+        const local = getLocalUser()
         const session: UserSession = {
           uid: fbUser.uid,
           email: fbUser.email,
-          displayName: fbUser.displayName,
-          photoURL: fbUser.photoURL,
+          displayName: fbUser.displayName || local?.displayName || null,
+          photoURL: fbUser.photoURL || local?.photoURL || null,
+          gender: local?.gender || 'Prefer not to say',
+          location: local?.location || 'Madhya Pradesh, India',
+          createdAt: fbUser.metadata?.creationTime || local?.createdAt || new Date().toISOString(),
+          role: local?.role || 'patient',
           isDemo: false,
         }
         setLocalUser(session)

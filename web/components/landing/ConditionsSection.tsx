@@ -49,33 +49,53 @@ export function ConditionsSection() {
     {
       id: 'pd',
       heading: "Parkinson's Disease",
+      pillClass: 'condition-pill-pd',
       plainDescription:
         'How the voice changes: Vocal cords develop subtle tremors, volume drops without the speaker noticing, and pitch becomes monotone.',
-      measurements: ['Voice steadiness (Jitter)', 'Volume stability (Shimmer)', 'Clarity (HNR)'],
+      measurements: [
+        { term: 'Jitter', plain: 'voice steadiness' },
+        { term: 'Shimmer', plain: 'volume stability' },
+        { term: 'HNR', plain: 'clarity' },
+      ],
       link: '/about/method#pd',
     },
     {
       id: 'ad',
       heading: "Alzheimer's Disease",
+      pillClass: 'condition-pill-ad',
       plainDescription:
         'How the voice changes: Pauses become longer as the brain searches for words. Speech pace slows, and sentence flow becomes fragmented.',
-      measurements: ['Pause duration', 'Speaking speed', 'Word flow consistency'],
+      measurements: [
+        { term: 'Pause Ratio', plain: 'pause duration' },
+        { term: 'Speech Cadence', plain: 'speaking pace' },
+        { term: 'Flow Continuity', plain: 'sentence flow' },
+      ],
       link: '/about/method#ad',
     },
     {
       id: 'dysarthria',
       heading: 'Dysarthria — Speech Muscle Weakness',
+      pillClass: 'condition-pill-dys',
       plainDescription:
         'How the voice changes: Tongue, lip, and throat muscles weaken, causing slurred consonants and difficulty forming crisp vowel sounds.',
-      measurements: ['Vowel clarity', 'Consonant sharpness', 'Muscle coordination'],
+      measurements: [
+        { term: 'Formants', plain: 'vowel clarity' },
+        { term: 'Onset Sharpness', plain: 'consonant edges' },
+        { term: 'Articulator Control', plain: 'muscle coordination' },
+      ],
       link: '/about/method#dysarthria',
     },
     {
       id: 'post-stroke',
       heading: 'Post-Stroke Changes',
+      pillClass: 'condition-pill-pst',
       plainDescription:
         'How the voice changes: Speech rhythm can become uneven, breathing and speaking become harder to coordinate, and vocal energy drops.',
-      measurements: ['Speech rhythm', 'Breath support', 'Vocal energy'],
+      measurements: [
+        { term: 'Spectral Dynamics', plain: 'speech rhythm' },
+        { term: 'Subglottal Support', plain: 'breath stability' },
+        { term: 'Vocal Energy', plain: 'loudness control' },
+      ],
       link: '/about/method#post-stroke',
     },
   ]
@@ -311,10 +331,11 @@ export function ConditionsSection() {
                     <div className="flex flex-wrap gap-1.5">
                       {c.measurements.map((m) => (
                         <span
-                          key={m}
-                          className="text-[11px] font-mono px-2.5 py-1 rounded-md bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]"
+                          key={m.term}
+                          className={`condition-pill ${c.pillClass}`}
                         >
-                          {m}
+                          <span className="term font-medium">{m.term}</span>
+                          <span className="term-plain text-[10px]">({m.plain})</span>
                         </span>
                       ))}
                     </div>

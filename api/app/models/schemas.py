@@ -50,9 +50,10 @@ class ReportModel(BaseModel):
 class AppointmentCreate(BaseModel):
     userId: str
     doctorId: str
-    disorder: str
+    disorder: Optional[str] = "Neurological Voice Screening Follow-up"
     dateTime: str
     notes: Optional[str] = None
+    reportAttached: Optional[str] = "NV-Screening-Latest.pdf"
 
 class AppointmentModel(BaseModel):
     id: str
@@ -63,9 +64,11 @@ class AppointmentModel(BaseModel):
     hospital: str
     disorder: str
     dateTime: str
-    status: str  # "Upcoming" | "Completed" | "Cancelled"
+    status: str = "Awaiting clinic confirmation"  # "Awaiting clinic confirmation" | "Confirmed" | "Cancelled"
     notes: Optional[str] = None
+    phone: Optional[str] = "Contact via hospital"
     referenceNumber: str
+    reportAttached: Optional[str] = None
     createdAt: str
 
 class DoctorModel(BaseModel):

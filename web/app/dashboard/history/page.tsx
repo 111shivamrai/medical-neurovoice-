@@ -259,14 +259,33 @@ export default function ReportsHistoryPage() {
       {/* ──────────────── TAB 1: REPORTS ──────────────── */}
       {activeTab === 'reports' && (
         <div className="space-y-4">
-          {sessions.map((sess) => {
-            const isExpanded = expandedCard === sess.id
-
-            return (
-              <div
-                key={sess.id}
-                className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:border-[var(--primary)]/60 transition-all overflow-hidden"
+          {sessions.length === 0 ? (
+            <div className="text-center py-16 px-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow-sm)] flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] shadow-inner">
+                <FileText size={28} className="text-[var(--primary)]" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-[var(--text)]">No screening reports yet</h3>
+                <p className="text-xs text-[var(--muted)] max-w-md leading-relaxed">
+                  You haven&apos;t completed any voice screenings yet. Take a 30-second screening to receive your acoustic assessment and downloadable clinical report.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/scan"
+                className="btn-primary text-xs py-2.5 px-5 rounded-xl font-semibold shadow-sm flex items-center gap-2"
               >
+                <span>Take your first screening →</span>
+              </Link>
+            </div>
+          ) : (
+            sessions.map((sess) => {
+              const isExpanded = expandedCard === sess.id
+
+              return (
+                <div
+                  key={sess.id}
+                  className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:border-[var(--primary)]/60 transition-all overflow-hidden"
+                >
                 {/* Collapsed Card Row */}
                 <div className="p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
                   {/* Left: Date (large) | NV-ID (small, muted) | Language */}
@@ -453,7 +472,7 @@ export default function ReportsHistoryPage() {
                 )}
               </div>
             )
-          })}
+          }))}
         </div>
       )}
 
@@ -737,7 +756,10 @@ export default function ReportsHistoryPage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {/* Voice steadiness (Jitter) */}
                 <tr className="hover:bg-[var(--surface-2)]/40">
-                  <td className="py-3 px-3 font-semibold text-[var(--text)]">Voice steadiness (Jitter)</td>
+                  <td className="py-3 px-3">
+                    <span className="term">Jitter</span>
+                    <span className="term-plain">(voice steadiness)</span>
+                  </td>
                   <td className="py-3 px-3 font-mono font-bold text-[var(--primary)]">
                     {sessionA.features.voiceSteadiness.value}
                   </td>
@@ -763,7 +785,10 @@ export default function ReportsHistoryPage() {
 
                 {/* Volume stability (Shimmer) */}
                 <tr className="hover:bg-[var(--surface-2)]/40">
-                  <td className="py-3 px-3 font-semibold text-[var(--text)]">Volume consistency (Shimmer)</td>
+                  <td className="py-3 px-3">
+                    <span className="term">Shimmer</span>
+                    <span className="term-plain">(volume consistency)</span>
+                  </td>
                   <td className="py-3 px-3 font-mono font-bold text-[var(--primary)]">
                     {sessionA.features.volumeStability.value}
                   </td>
@@ -789,7 +814,10 @@ export default function ReportsHistoryPage() {
 
                 {/* Voice clarity (HNR) */}
                 <tr className="hover:bg-[var(--surface-2)]/40">
-                  <td className="py-3 px-3 font-semibold text-[var(--text)]">Voice clarity (HNR)</td>
+                  <td className="py-3 px-3">
+                    <span className="term">HNR</span>
+                    <span className="term-plain">(voice clarity)</span>
+                  </td>
                   <td className="py-3 px-3 font-mono font-bold text-[var(--primary)]">
                     {sessionA.features.voiceClarity.value}
                   </td>
@@ -815,7 +843,10 @@ export default function ReportsHistoryPage() {
 
                 {/* Pause patterns */}
                 <tr className="hover:bg-[var(--surface-2)]/40">
-                  <td className="py-3 px-3 font-semibold text-[var(--text)]">Pause patterns</td>
+                  <td className="py-3 px-3">
+                    <span className="term">Pause Ratio</span>
+                    <span className="term-plain">(cadence pauses)</span>
+                  </td>
                   <td className="py-3 px-3 font-mono font-bold text-[var(--primary)]">
                     {sessionA.features.pauseRatio.value}
                   </td>

@@ -168,7 +168,7 @@ export function FloatingDock() {
         aria-label="Bottom Dock Navigation"
         className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[95vw] sm:max-w-md w-full px-2"
       >
-        <div className="flex items-center justify-between px-3 sm:px-6 py-2 sm:py-2.5 rounded-2xl sm:rounded-full bg-[var(--surface)]/90 backdrop-blur-xl border border-[var(--border)] shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+        <div className="floating-dock-container flex items-center justify-between px-3 sm:px-6 py-2 sm:py-2.5 rounded-2xl sm:rounded-full">
           {/* 1. Home */}
           <Link
             href="/dashboard"

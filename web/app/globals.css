@@ -5,52 +5,56 @@
 @tailwind utilities;
 
 @layer base {
-  /* LIGHT MODE (DEFAULT - CLINICAL, CALM, TRUSTWORTHY) */
+  /* LIGHT THEME (DOCTORS' PRIMARY INTERFACE — CLINICAL, CALM, TRUSTWORTHY) */
   :root {
-    --bg: #F5F7FA;
+    --bg: #F2F5FB;
     --surface: #FFFFFF;
-    --surface-2: #EEF2F9;
-    --border: #D5DBE8;
-    --text: #0C1A2E;
-    --muted: #4A5568;
-    --text-muted: #4A5568;
-    --primary: #1E40AF;
+    --surface-2: #EAF0FA;
+    --border: #C8D5E8;
+    --text: #0A1628;
+    --muted: #4D637E;
+    --text-muted: #4D637E;
+    --primary: #1B3FA0;
     --primary-fg: #FFFFFF;
-    --accent: #0D7377;
-    --success: #15803D;
-    --warning: #B45309;
-    --danger: #B91C1C;
-    --shadow-sm: 0 1px 3px rgba(12, 26, 46, 0.08);
-    --shadow-md: 0 4px 12px rgba(12, 26, 46, 0.10);
+    --primary-hover: #163490;
+    --accent: #0A7A85;
+    --success: #166534;
+    --warning: #854D0E;
+    --danger: #9B1C1C;
+    --shadow-sm: 0 1px 3px rgba(10, 22, 40, 0.08), 0 1px 2px rgba(10, 22, 40, 0.04);
+    --shadow-md: 0 4px 12px rgba(10, 22, 40, 0.10), 0 2px 4px rgba(10, 22, 40, 0.06);
+    --glow-primary: none;
 
     /* Semantic Aliases */
     --background: var(--bg);
     --text-primary: var(--text);
-    --text-secondary: var(--text-muted);
+    --text-secondary: var(--muted);
   }
 
-  /* DARK MODE */
+  /* DARK THEME (DEEP, POLISHED, MEDICAL NAVY) */
   .dark {
-    --bg: #0A0F1E;
-    --surface: #111827;
-    --surface-2: #1E293B;
-    --border: #263345;
-    --text: #F8FAFC;
-    --muted: #94A3B8;
-    --text-muted: #94A3B8;
-    --primary: #3B82F6;
+    --bg: #080E1C;
+    --surface: #0F1729;
+    --surface-2: #162136;
+    --border: #1E3054;
+    --text: #EDF2F8;
+    --muted: #7A92B0;
+    --text-muted: #7A92B0;
+    --primary: #3B6FD4;
     --primary-fg: #FFFFFF;
-    --accent: #14B8A6;
+    --primary-hover: #4D82E8;
+    --accent: #1ABFCF;
     --success: #22C55E;
     --warning: #F59E0B;
     --danger: #EF4444;
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
+    --shadow-sm: none;
+    --shadow-md: none;
+    --glow-primary: 0 0 20px rgba(59, 111, 212, 0.3);
 
     /* Semantic Aliases */
     --background: var(--bg);
     --text-primary: var(--text);
-    --text-secondary: var(--text-muted);
+    --text-secondary: var(--muted);
   }
 
   html {
@@ -66,7 +70,7 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Focus ring for accessibility WCAG AA */
+  /* WCAG AA Accessible focus rings */
   *:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
@@ -100,10 +104,10 @@
 
   .card-clinical:hover {
     box-shadow: var(--shadow-md);
-    border-color: var(--accent);
+    border-color: var(--primary);
   }
 
-  /* Clean Primary Button - No generic glowing gradient in light mode */
+  /* Clean Primary Button */
   .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -111,16 +115,17 @@
     gap: 0.5rem;
     background-color: var(--primary);
     color: #FFFFFF;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 0.875rem;
     padding: 0.625rem 1.25rem;
     border-radius: 8px;
-    border: 1px solid transparent;
-    transition: background-color 0.15s ease, transform 0.05s ease;
+    border: none;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
   }
 
   .btn-primary:hover {
-    filter: brightness(1.1);
+    background-color: var(--primary-hover);
+    box-shadow: var(--glow-primary);
   }
 
   .btn-primary:active {
@@ -134,39 +139,123 @@
     justify-content: center;
     gap: 0.5rem;
     background-color: transparent;
-    color: var(--text);
+    color: var(--primary);
     font-weight: 500;
     font-size: 0.875rem;
     padding: 0.625rem 1.25rem;
     border-radius: 8px;
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--primary);
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
 
   .btn-ghost:hover {
     background-color: var(--surface-2);
-    border-color: var(--primary);
-    color: var(--primary);
+  }
+
+  /* Danger Button */
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: var(--danger);
+    color: #FFFFFF;
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    border: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .btn-danger:hover {
+    opacity: 0.9;
   }
 
   /* Clean Form Inputs */
   .input-clinical {
     background-color: var(--surface);
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     color: var(--text);
     border-radius: 8px;
     padding: 0.625rem 0.875rem;
     font-size: 0.875rem;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease;
   }
 
   .input-clinical:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.15);
     outline: none;
   }
 
   .input-clinical::placeholder {
     color: var(--muted);
+  }
+
+  /* Floating Dock System */
+  .floating-dock-container {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+  }
+
+  .dark .floating-dock-container {
+    background-color: rgba(15, 23, 41, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(30, 48, 84, 0.8);
+    box-shadow: none;
+  }
+
+  /* TASK 14C: Dual Layer Medical + Plain Language */
+  .term {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .term-plain {
+    color: var(--muted);
+    font-style: italic;
+    margin-left: 4px;
+    font-size: 0.85em;
+  }
+
+  /* Condition Specific Tag Pills */
+  .condition-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    border-radius: 9999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .condition-pill-pd {
+    border-color: var(--primary);
+  }
+
+  .condition-pill-ad {
+    border-color: #7C3AED;
+  }
+
+  .condition-pill-dys {
+    border-color: var(--accent);
+  }
+
+  .condition-pill-pst {
+    border-color: var(--warning);
+  }
+
+  /* Hero Section Backgrounds */
+  .hero-radial-bg {
+    background-color: var(--bg);
+  }
+
+  .dark .hero-radial-bg {
+    background: var(--bg) radial-gradient(ellipse at 30% 50%, rgba(59, 111, 212, 0.08) 0%, transparent 70%);
   }
 }

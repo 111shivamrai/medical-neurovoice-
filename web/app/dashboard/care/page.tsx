@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { downloadScreeningPdf } from '@/lib/downloadPdf'
+import { subscribeToAuth, UserSession } from '@/lib/auth'
 import {
   Users,
   Calendar,
@@ -25,6 +26,8 @@ import {
   MessageSquare,
   Bot,
   User as UserIcon,
+  Phone,
+  Trash2,
 } from 'lucide-react'
 
 interface Doctor {
@@ -47,6 +50,7 @@ interface Doctor {
   sourceName?: string
   verified?: boolean
   available?: boolean
+  phone?: string
   distanceKm?: number
 }
 
@@ -76,7 +80,8 @@ function CareCommandContent() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt')
 
-  // Appointment Request Flow State
+  // User Session & Appointment State (Real user data only)
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [requestStep, setRequestStep] = useState<1 | 2 | 3 | 4>(1)
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
@@ -84,19 +89,9 @@ function CareCommandContent() {
   const [requestDate, setRequestDate] = useState('')
   const [requestTime, setRequestTime] = useState('10:30 AM')
   const [attachLatestReport, setAttachLatestReport] = useState(true)
-  const [appointmentsList, setAppointmentsList] = useState<any[]>([
-    {
-      id: 'req-9041',
-      doctorName: 'Dr. Akhilesh Shroti',
-      hospital: 'Marblecity Hospital',
-      speciality: 'Neurology',
-      date: '05 Nov 2026',
-      time: '11:00 AM',
-      status: 'Request Pending Clinic Confirmation',
-      reason: 'Periodic Parkinson vocal tremor evaluation',
-      reportAttached: 'NV-Screening-Latest.pdf',
-    },
-  ])
+  const [appointmentsList, setAppointmentsList] = useState<any[]>([])
+  const [cancelModalApt, setCancelModalApt] = useState<any | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
   const [requestSuccess, setRequestSuccess] = useState(false)
 
   // AI Health Assistant State
@@ -134,7 +129,7 @@ function CareCommandContent() {
     return Math.round(R * c * 10) / 10
   }
 
-  // Fetch doctors on mount
+  // Fetch doctors and subscribe to user appointments
   useEffect(() => {
     fetch('/api/doctors')
       .then((res) => (res.ok ? res.json() : []))
@@ -146,6 +141,26 @@ function CareCommandContent() {
       .catch((err) => {
         console.warn('Doctors API notice:', err)
       })
+
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user)
+      if (user?.uid) {
+        fetch(`/api/appointments/${encodeURIComponent(user.uid)}`)
+          .then((res) => (res.ok ? res.json() : []))
+          .then((data) => {
+            if (Array.isArray(data)) {
+              setAppointmentsList(data)
+            } else {
+              setAppointmentsList([])
+            }
+          })
+          .catch(() => setAppointmentsList([]))
+      } else {
+        setAppointmentsList([])
+      }
+    })
+
+    return () => unsub()
   }, [])
 
   // Geolocation Request
@@ -187,25 +202,68 @@ function CareCommandContent() {
     return matchesSearch && matchesSpeciality
   })
 
-  // Submit Appointment Request
-  const handleConfirmAppointmentRequest = (e: React.FormEvent) => {
+  // Submit Appointment Request (User-specific query)
+  const handleConfirmAppointmentRequest = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedDoctor) return
 
-    const newReq = {
-      id: 'req-' + Math.floor(1000 + Math.random() * 9000),
-      doctorName: selectedDoctor.name,
-      hospital: selectedDoctor.hospital,
-      speciality: selectedDoctor.speciality || selectedDoctor.specialty || 'Neurology',
-      date: requestDate || 'Preferred within 7 days',
-      time: requestTime,
-      status: 'Request Submitted · Call Clinic to Confirm',
-      reason: consultReason,
+    const preferredDateTime = `${requestDate || 'Preferred within 7 days'} · ${requestTime}`
+    const aptPayload = {
+      userId: currentUser?.uid || 'guest_user',
+      doctorId: selectedDoctor.id,
+      disorder: consultReason,
+      dateTime: preferredDateTime,
+      notes: `Specialist consultation with ${selectedDoctor.name}. Clinic phone: ${selectedDoctor.phone || 'Hospital reception'}.`,
       reportAttached: attachLatestReport ? 'NV-Screening-Latest.pdf' : 'None',
     }
 
-    setAppointmentsList([newReq, ...appointmentsList])
+    try {
+      const res = await fetch('/api/appointment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aptPayload),
+      })
+      if (res.ok) {
+        const created = await res.json()
+        setAppointmentsList((prev) => [created, ...prev])
+      } else {
+        const fallback = {
+          id: 'apt-' + Math.floor(1000 + Math.random() * 9000),
+          userId: currentUser?.uid || 'guest_user',
+          doctorId: selectedDoctor.id,
+          doctorName: selectedDoctor.name,
+          doctorSpecialty: selectedDoctor.speciality || selectedDoctor.specialty || 'Neurology',
+          hospital: selectedDoctor.hospital,
+          phone: selectedDoctor.phone || 'Contact via hospital',
+          disorder: consultReason,
+          dateTime: preferredDateTime,
+          status: 'Awaiting clinic confirmation',
+          reportAttached: attachLatestReport ? 'NV-Screening-Latest.pdf' : 'None',
+        }
+        setAppointmentsList((prev) => [fallback, ...prev])
+      }
+    } catch {
+      // Fallback
+    }
+
     setRequestSuccess(true)
+  }
+
+  // Cancel Appointment Handler
+  const handleCancelAppointment = async () => {
+    if (!cancelModalApt) return
+    setIsCancelling(true)
+    try {
+      await fetch(`/api/appointments/${encodeURIComponent(cancelModalApt.id)}`, {
+        method: 'DELETE',
+      })
+      setAppointmentsList((prev) => prev.filter((a) => a.id !== cancelModalApt.id))
+      setCancelModalApt(null)
+    } catch (err) {
+      console.error('Cancel appointment error:', err)
+    } finally {
+      setIsCancelling(false)
+    }
   }
 
   // Send message to AI Health Assistant
@@ -662,53 +720,129 @@ function CareCommandContent() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {appointmentsList.map((apt) => (
-              <div
-                key={apt.id}
-                className="p-5 sm:p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-              >
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-[var(--muted)]">{apt.id}</span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
-                      {apt.status}
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-[var(--text)]">
-                    {apt.doctorName} · {apt.speciality}
-                  </h3>
-                  <div className="text-xs text-[var(--muted)] font-medium">{apt.hospital}</div>
-
-                  <div className="flex items-center gap-4 text-xs font-mono text-[var(--muted)] pt-1">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={13} />
-                      {apt.date}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={13} />
-                      {apt.time}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-[var(--muted)] pt-1">
-                    Reason: {apt.reason} (Attached: {apt.reportAttached})
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => downloadScreeningPdf('NV-Latest', 'Participant')}
-                    className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-[var(--border)]"
-                  >
-                    <FileText size={14} />
-                    <span>View Attached Report</span>
-                  </button>
-                </div>
+          {appointmentsList.length === 0 ? (
+            <div className="text-center py-16 px-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow-sm)] flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] shadow-inner">
+                <Calendar size={28} className="text-[var(--primary)]" />
               </div>
-            ))}
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-[var(--text)]">No appointments yet</h3>
+                <p className="text-xs text-[var(--muted)] max-w-md leading-relaxed">
+                  After your screening, you can request a specialist consultation and track it here.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('doctors')}
+                className="btn-primary text-xs py-2.5 px-5 rounded-xl font-semibold shadow-sm flex items-center gap-2"
+              >
+                <span>Find a specialist →</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {appointmentsList.map((apt) => (
+                <div
+                  key={apt.id}
+                  className="p-5 sm:p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row items-start md:items-center justify-between gap-5"
+                >
+                  <div className="space-y-2.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-[var(--muted)] font-semibold">{apt.referenceNumber || apt.id}</span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        Awaiting clinic confirmation
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text)]">
+                        {apt.doctorName} · {apt.doctorSpecialty || apt.speciality}
+                      </h3>
+                      <div className="text-xs text-[var(--muted)] font-medium mt-0.5">{apt.hospital}</div>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs font-mono text-[var(--muted)]">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={13} className="text-[var(--primary)]" />
+                        {apt.dateTime || apt.date || 'Preferred this week'}
+                      </span>
+                    </div>
+
+                    {/* Clinic phone with confirmation reminder */}
+                    <div className="p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--muted)] flex items-start gap-2.5 max-w-lg">
+                      <Phone size={14} className="mt-0.5 text-[var(--primary)] shrink-0" />
+                      <div>
+                        <span className="font-semibold text-[var(--text)] block">
+                          Clinic Reception: {apt.phone || 'Contact via hospital reception'}
+                        </span>
+                        <span className="text-[11px] text-[var(--muted)]">
+                          Please call the clinic directly to confirm your slot.
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-[var(--muted)]">
+                      Reason: {apt.notes || apt.reason || apt.disorder} {apt.reportAttached && `(Attached: ${apt.reportAttached})`}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => downloadScreeningPdf(apt.reportAttached || 'NV-Screening-Latest', currentUser?.displayName || 'Participant')}
+                      className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-[var(--border)]"
+                    >
+                      <FileText size={14} />
+                      <span>View attached report</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCancelModalApt(apt)}
+                      className="text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border border-transparent transition-colors"
+                    >
+                      <Trash2 size={14} />
+                      <span>Cancel request</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CANCEL APPOINTMENT CONFIRMATION MODAL */}
+      {cancelModalApt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="max-w-md w-full rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl p-6 space-y-4 animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 flex items-center justify-center">
+              <Trash2 size={22} />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-[var(--text)]">Cancel Consultation Request?</h4>
+              <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed">
+                Are you sure you want to cancel your consultation request with <strong>{cancelModalApt.doctorName}</strong>? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelModalApt(null)}
+                className="btn-ghost text-xs py-2 px-4 rounded-xl"
+              >
+                Keep request
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelAppointment}
+                disabled={isCancelling}
+                className="btn-danger text-xs py-2 px-4 rounded-xl"
+              >
+                {isCancelling ? 'Cancelling...' : 'Yes, cancel request'}
+              </button>
+            </div>
           </div>
         </div>
       )}
