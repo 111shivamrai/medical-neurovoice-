@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Activity } from 'lucide-react'
@@ -80,7 +80,15 @@ export function HeroSection() {
                   </div>
                 }
               >
-                <RobotCanvas />
+                <Suspense
+                  fallback={
+                    <div className="w-full h-[320px] sm:h-[400px] flex items-center justify-center rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
+                      <div className="w-16 h-16 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
+                    </div>
+                  }
+                >
+                  <RobotCanvas />
+                </Suspense>
               </ErrorBoundary>
             </div>
           </div>
@@ -95,9 +103,8 @@ export function HeroSection() {
 
             {/* Line 1 (italic accent) */}
             <motion.p
-              initial={{ opacity: 0, y: 10 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
               className="text-sm sm:text-base font-semibold italic text-[var(--accent)] mb-2 font-display"
             >
               Thirty seconds.
@@ -105,9 +112,8 @@ export function HeroSection() {
 
             {/* Line 2 (headline) */}
             <motion.h1
-              initial={{ opacity: 0, y: 16 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.08 }}
               className="font-display font-extrabold tracking-tight text-3xl sm:text-5xl lg:text-[3.5rem] text-[var(--text)] leading-[1.1] mb-5"
             >
               YOUR VOICE KNOWS{' '}
@@ -118,9 +124,8 @@ export function HeroSection() {
 
             {/* Line 3 (subtext) */}
             <motion.p
-              initial={{ opacity: 0, y: 12 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
               className="text-base sm:text-lg text-[var(--muted)] leading-relaxed mb-3 max-w-xl"
             >
               NeuroVoice listens for subtle neuromuscular biomarker deviations in your speech — in Hindi or English,
@@ -129,9 +134,8 @@ export function HeroSection() {
 
             {/* Line 4 (Hindi line) */}
             <motion.p
-              initial={{ opacity: 0, y: 12 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
               className="text-base sm:text-lg font-medium text-[var(--accent)] mb-7"
             >
               आपकी आवाज़ में है पहला संकेत।
@@ -139,9 +143,8 @@ export function HeroSection() {
 
             {/* CTAs with Next.js Protected Route Flow */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.25 }}
               className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8"
             >
               <div className="flex flex-col items-start gap-1.5">

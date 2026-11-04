@@ -388,29 +388,29 @@ function MedicalAIRobotModel({
 
         {/* STETHOSCOPE (Around Neck & Hanging Down - Image 1 Match) */}
         <group ref={stethoscopeRef}>
-          {/* Torus tube draped around neck */}
-          <mesh position={[0, -0.2, 0.36]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.34, 0.022, 16, 32, Math.PI]} />
-            <meshStandardMaterial color="#334155" roughness={0.4} metalness={0.25} />
+          {/* Torus tube draped around neck & shoulders */}
+          <mesh position={[0, -0.04, 0.18]} rotation={[Math.PI / 2 - 0.35, 0, 0]}>
+            <torusGeometry args={[0.28, 0.018, 16, 32, Math.PI]} />
+            <meshStandardMaterial color="#1E293B" roughness={0.3} metalness={0.4} />
           </mesh>
           {/* Stethoscope Left Tube Stem */}
-          <mesh position={[-0.14, -0.38, 0.46]} rotation={[0.1, 0, -0.08]}>
-            <cylinderGeometry args={[0.016, 0.016, 0.32, 16]} />
-            <meshStandardMaterial color="#334155" roughness={0.4} metalness={0.25} />
+          <mesh position={[-0.14, -0.32, 0.44]} rotation={[0.15, 0, -0.06]}>
+            <cylinderGeometry args={[0.014, 0.014, 0.36, 16]} />
+            <meshStandardMaterial color="#1E293B" roughness={0.3} metalness={0.4} />
           </mesh>
           {/* Stethoscope Right Tube Stem */}
-          <mesh position={[0.12, -0.42, 0.48]} rotation={[0.12, 0, 0.12]}>
-            <cylinderGeometry args={[0.016, 0.016, 0.36, 16]} />
-            <meshStandardMaterial color="#334155" roughness={0.4} metalness={0.25} />
+          <mesh position={[0.13, -0.34, 0.45]} rotation={[0.16, 0, 0.08]}>
+            <cylinderGeometry args={[0.014, 0.014, 0.4, 16]} />
+            <meshStandardMaterial color="#1E293B" roughness={0.3} metalness={0.4} />
           </mesh>
           {/* Stethoscope Metallic Chest Piece / Bell */}
-          <mesh position={[0.15, -0.58, 0.52]} rotation={[Math.PI / 2, 0, 0]} material={chromeMat}>
-            <cylinderGeometry args={[0.06, 0.06, 0.025, 24]} />
+          <mesh position={[0.14, -0.55, 0.48]} rotation={[Math.PI / 2, 0, 0]} material={chromeMat}>
+            <cylinderGeometry args={[0.055, 0.055, 0.02, 24]} />
           </mesh>
           {/* Inner Cyan Bell Ring */}
-          <mesh position={[0.15, -0.58, 0.535]} rotation={[Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.045, 24]} />
-            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.6} />
+          <mesh position={[0.14, -0.55, 0.492]} rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.04, 24]} />
+            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
           </mesh>
         </group>
 
@@ -452,160 +452,183 @@ function MedicalAIRobotModel({
         </mesh>
       </group>
 
-      {/* ─── HEAD (Smooth oval/egg shape, glowing cyan eyes, head ring) ─── */}
-      <group ref={headRef} position={[0, 0.5, 0]}>
-        {/* Smooth Oval Head Shell (#E8EEF4) */}
-        <mesh position={[0, 0, 0]} scale={[0.96, 1.06, 0.96]} material={headMat}>
-          <sphereGeometry args={[0.55, 32, 32]} />
+      {/* ─── HEAD (Humanoid Sleek Android - Exact Image 1 Match) ─── */}
+      <group ref={headRef} position={[0, 0.52, 0]}>
+        {/* Sleek Humanoid Head Cranium (#E8EEF4) */}
+        <mesh position={[0, 0.04, -0.02]} scale={[0.92, 1.12, 0.88]} material={headMat}>
+          <sphereGeometry args={[0.54, 32, 32]} />
         </mesh>
 
-        {/* Forehead Circular Detail with Concentric Rings (Image 1 Match) */}
-        <group position={[0, 0.28, 0.44]} rotation={[0.28, 0, 0]}>
-          {/* Outer Torus Ring */}
+
+
+        {/* Forehead Circular Diagnostic Ring (Image 1 Iconic Forehead Sensor) */}
+        <group position={[0, 0.32, 0.42]} rotation={[0.24, 0, 0]}>
+          {/* Outer Chrome Ring */}
           <mesh>
-            <torusGeometry args={[0.09, 0.016, 16, 32]} />
-            <meshStandardMaterial color="#CBD5E1" roughness={0.3} metalness={0.7} />
+            <torusGeometry args={[0.088, 0.015, 16, 32]} />
+            <meshStandardMaterial color="#CBD5E1" roughness={0.25} metalness={0.8} />
+          </mesh>
+          {/* Cyan Glowing Middle Ring */}
+          <mesh position={[0, 0, 0.004]}>
+            <torusGeometry args={[0.055, 0.012, 16, 32]} />
+            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.2} />
           </mesh>
           {/* Inner Cyan Glowing Disc */}
-          <mesh ref={foreheadGlowRef} position={[0, 0, 0.005]}>
-            <circleGeometry args={[0.065, 32]} />
+          <mesh ref={foreheadGlowRef} position={[0, 0, 0.008]}>
+            <circleGeometry args={[0.038, 32]} />
             <meshStandardMaterial
               color="#22D3EE"
               emissive="#22D3EE"
-              emissiveIntensity={1.0}
+              emissiveIntensity={1.3}
               roughness={0.1}
             />
           </mesh>
-          {/* Center Dark Core */}
-          <mesh position={[0, 0, 0.012]}>
-            <circleGeometry args={[0.025, 24]} />
-            <meshStandardMaterial color="#0A1828" roughness={0.5} />
+          {/* Center Dark Core Dot */}
+          <mesh position={[0, 0, 0.014]}>
+            <circleGeometry args={[0.016, 24]} />
+            <meshStandardMaterial color="#04101E" roughness={0.9} />
           </mesh>
         </group>
 
+        {/* Upper Forehead Accent Rings (Image 1 side skull nodes) */}
+        <mesh position={[-0.24, 0.34, 0.32]} rotation={[0.3, -0.4, 0]}>
+          <torusGeometry args={[0.045, 0.009, 16, 24]} />
+          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
+        </mesh>
+        <mesh position={[0.24, 0.34, 0.32]} rotation={[0.3, 0.4, 0]}>
+          <torusGeometry args={[0.045, 0.009, 16, 24]} />
+          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
+        </mesh>
+
         {/* Circular Detail Ring on Top of Head (#B0C4D8) */}
-        <mesh position={[0, 0.52, 0.04]} rotation={[Math.PI / 2 + 0.1, 0, 0]}>
-          <torusGeometry args={[0.16, 0.028, 16, 32]} />
+        <mesh position={[0, 0.58, 0.02]} rotation={[Math.PI / 2 + 0.12, 0, 0]}>
+          <torusGeometry args={[0.16, 0.026, 16, 32]} />
           <meshStandardMaterial color="#B0C4D8" roughness={0.25} metalness={0.5} />
         </mesh>
 
-        {/* Side Earphone Headset Nodes with Concentric Rings */}
-        <group position={[-0.54, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
+        {/* Side Headset Ear Modules (Sleek White & Cyan like Image 1) */}
+        <group position={[-0.52, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
           <mesh>
-            <cylinderGeometry args={[0.11, 0.11, 0.08, 24]} />
-            <meshStandardMaterial color="#0284C7" roughness={0.3} metalness={0.6} />
+            <cylinderGeometry args={[0.12, 0.12, 0.08, 24]} />
+            <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.2} />
           </mesh>
           <mesh position={[0, 0.042, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.07, 24]} />
-            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
+            <torusGeometry args={[0.08, 0.012, 16, 24]} />
+            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.0} />
           </mesh>
         </group>
 
-        <group position={[0.54, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <group position={[0.52, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
           <mesh>
-            <cylinderGeometry args={[0.11, 0.11, 0.08, 24]} />
-            <meshStandardMaterial color="#0284C7" roughness={0.3} metalness={0.6} />
+            <cylinderGeometry args={[0.12, 0.12, 0.08, 24]} />
+            <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.2} />
           </mesh>
           <mesh position={[0, -0.042, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.07, 24]} />
-            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
+            <torusGeometry args={[0.08, 0.012, 16, 24]} />
+            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.0} />
           </mesh>
         </group>
 
-        {/* Humanoid Facial Sculpt (Smooth white face - NO black visor) */}
-        {/* Subtle Nose Bridge */}
-        <mesh position={[0, 0.04, 0.54]} rotation={[0.08, 0, 0]}>
-          <boxGeometry args={[0.04, 0.12, 0.05]} />
+        {/* Sculpted Humanoid Nose (Image 1 clean refined android nose) */}
+        <mesh position={[0, 0.04, 0.49]} rotation={[0.12, 0, 0]}>
+          <boxGeometry args={[0.038, 0.11, 0.04]} />
           <meshStandardMaterial color="#E8EEF4" roughness={0.3} />
         </mesh>
 
-        {/* Sculpted Left Eye Socket (Recessed into face) */}
-        <group position={[-0.17, 0.09, 0.5]}>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.075, 0.075, 0.04, 32]} />
-            <meshStandardMaterial color="#0A1828" roughness={0.4} metalness={0.7} />
+        {/* ─── LEFT EYE: Wide Intelligent Glowing Cyan Eye (Image 1 Exact Match) ─── */}
+        <group position={[-0.18, 0.12, 0.48]}>
+          {/* Recessed Dark Eye Cavity */}
+          <mesh>
+            <circleGeometry args={[0.082, 32]} />
+            <meshStandardMaterial color="#030C17" roughness={0.5} />
           </mesh>
-          {/* Outer Chrome Rim */}
-          <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.075, 0.012, 16, 32]} />
-            <meshStandardMaterial color="#CBD5E1" roughness={0.2} metalness={0.8} />
+          {/* Circular Chrome Bezel Rim (XY plane facing camera) */}
+          <mesh position={[0, 0, 0.008]}>
+            <torusGeometry args={[0.08, 0.008, 16, 32]} />
+            <meshStandardMaterial color="#E2E8F0" roughness={0.15} metalness={0.9} />
           </mesh>
-          {/* Glowing Cyan Iris */}
-          <mesh ref={leftEyeRef} position={[0, 0, 0.025]}>
-            <circleGeometry args={[0.062, 32]} />
+          {/* Bright Cyan Glowing Iris Disc */}
+          <mesh ref={leftEyeRef} position={[0, 0, 0.012]}>
+            <circleGeometry args={[0.07, 32]} />
             <meshStandardMaterial
               color="#22D3EE"
               emissive="#22D3EE"
-              emissiveIntensity={1.3}
-              roughness={0.1}
+              emissiveIntensity={1.8}
+              roughness={0.05}
             />
           </mesh>
-          {/* Dark Pupil Center */}
-          <mesh position={[0, 0, 0.028]}>
-            <circleGeometry args={[0.025, 24]} />
-            <meshStandardMaterial color="#04101E" roughness={0.8} />
+          {/* Concentric Cyan Ring */}
+          <mesh position={[0, 0, 0.015]}>
+            <torusGeometry args={[0.05, 0.006, 16, 32]} />
+            <meshStandardMaterial color="#A5F3FC" emissive="#22D3EE" emissiveIntensity={2.2} />
           </mesh>
-          {/* Inner Light Flare */}
+          {/* Dark Center Pupil */}
+          <mesh position={[0, 0, 0.018]}>
+            <circleGeometry args={[0.026, 24]} />
+            <meshStandardMaterial color="#020813" roughness={0.9} />
+          </mesh>
+          {/* High-Intensity Cyan Eye PointLight */}
           <pointLight
             ref={leftEyeLightRef}
-            position={[0, 0, 0.08]}
+            position={[0, 0, 0.12]}
             color="#22D3EE"
-            intensity={1.2}
-            distance={0.9}
+            intensity={1.8}
+            distance={1.5}
           />
         </group>
 
-        {/* Sculpted Right Eye Socket (Recessed into face) */}
-        <group position={[0.17, 0.09, 0.5]}>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.075, 0.075, 0.04, 32]} />
-            <meshStandardMaterial color="#0A1828" roughness={0.4} metalness={0.7} />
+        {/* ─── RIGHT EYE: Wide Intelligent Glowing Cyan Eye (Image 1 Exact Match) ─── */}
+        <group position={[0.18, 0.12, 0.48]}>
+          {/* Recessed Dark Eye Cavity */}
+          <mesh>
+            <circleGeometry args={[0.082, 32]} />
+            <meshStandardMaterial color="#030C17" roughness={0.5} />
           </mesh>
-          {/* Outer Chrome Rim */}
-          <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.075, 0.012, 16, 32]} />
-            <meshStandardMaterial color="#CBD5E1" roughness={0.2} metalness={0.8} />
+          {/* Circular Chrome Bezel Rim (XY plane facing camera) */}
+          <mesh position={[0, 0, 0.008]}>
+            <torusGeometry args={[0.08, 0.008, 16, 32]} />
+            <meshStandardMaterial color="#E2E8F0" roughness={0.15} metalness={0.9} />
           </mesh>
-          {/* Glowing Cyan Iris */}
-          <mesh ref={rightEyeRef} position={[0, 0, 0.025]}>
-            <circleGeometry args={[0.062, 32]} />
+          {/* Bright Cyan Glowing Iris Disc */}
+          <mesh ref={rightEyeRef} position={[0, 0, 0.012]}>
+            <circleGeometry args={[0.07, 32]} />
             <meshStandardMaterial
               color="#22D3EE"
               emissive="#22D3EE"
-              emissiveIntensity={1.3}
-              roughness={0.1}
+              emissiveIntensity={1.8}
+              roughness={0.05}
             />
           </mesh>
-          {/* Dark Pupil Center */}
-          <mesh position={[0, 0, 0.028]}>
-            <circleGeometry args={[0.025, 24]} />
-            <meshStandardMaterial color="#04101E" roughness={0.8} />
+          {/* Concentric Cyan Ring */}
+          <mesh position={[0, 0, 0.015]}>
+            <torusGeometry args={[0.05, 0.006, 16, 32]} />
+            <meshStandardMaterial color="#A5F3FC" emissive="#22D3EE" emissiveIntensity={2.2} />
           </mesh>
-          {/* Inner Light Flare */}
+          {/* Dark Center Pupil */}
+          <mesh position={[0, 0, 0.018]}>
+            <circleGeometry args={[0.026, 24]} />
+            <meshStandardMaterial color="#020813" roughness={0.9} />
+          </mesh>
+          {/* High-Intensity Cyan Eye PointLight */}
           <pointLight
             ref={rightEyeLightRef}
-            position={[0, 0, 0.08]}
+            position={[0, 0, 0.12]}
             color="#22D3EE"
-            intensity={1.2}
-            distance={0.9}
+            intensity={1.8}
+            distance={1.5}
           />
         </group>
 
-        {/* Speaking Mouth / Articulator (Sculpted subtle humanoid mouth) */}
-        <group position={[0, -0.12, 0.52]}>
+        {/* Friendly Serene Mouth Line (Clean Android Smile Slot) */}
+        <group position={[0, -0.14, 0.49]}>
           <mesh ref={mouthRef}>
-            <boxGeometry args={[0.16, 0.024, 0.02]} />
+            <cylinderGeometry args={[0.08, 0.08, 0.014, 16, 1, false, 0, Math.PI]} />
             <meshStandardMaterial
-              color="#38BDF8"
+              color="#0F172A"
               emissive="#22D3EE"
-              emissiveIntensity={0.6}
+              emissiveIntensity={0.5}
               roughness={0.3}
             />
-          </mesh>
-          {/* Subtle lower lip / chin contour */}
-          <mesh position={[0, -0.04, -0.01]}>
-            <boxGeometry args={[0.14, 0.018, 0.02]} />
-            <meshStandardMaterial color="#E8EEF4" roughness={0.4} />
           </mesh>
         </group>
       </group>

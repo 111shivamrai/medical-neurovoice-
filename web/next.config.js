@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['recharts', 'react-is'],
+  transpilePackages: ['recharts', 'react-is', 'three', '@react-three/fiber', '@react-three/drei'],
   images: {
     domains: ['lh3.googleusercontent.com', 'firebasestorage.googleapis.com'],
   },
