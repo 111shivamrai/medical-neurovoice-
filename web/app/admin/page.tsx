@@ -61,7 +61,7 @@ export default function AdminPanelPage() {
   const usersList = [
     { name: 'Dr. V. K. Soni', email: 'vksoni@jmc.ac.in', role: 'Doctor (Neurology)', screenings: 182, lastActive: '10m ago' },
     { name: 'Dr. Priya Sharma', email: 'psharma@jmc.ac.in', role: 'Doctor (Neurology)', screenings: 144, lastActive: '1h ago' },
-    { name: 'Sunita Bai', email: 'sunita.asha@sehora.mp.gov.in', role: 'ASHA Worker', screenings: 89, lastActive: '2h ago' },
+    { name: 'Sunita Bai', email: 'sunita.bai@sehora.mp.gov.in', role: 'Community Health', screenings: 89, lastActive: '2h ago' },
     { name: 'Rameshwar Patel', email: 'rameshwar.p@gmail.com', role: 'Personal', screenings: 4, lastActive: '3d ago' },
     { name: 'Amit Verma', email: 'amit.verma@pg.jmc.ac.in', role: 'Medical Student', screenings: 38, lastActive: '1d ago' },
   ]
@@ -174,7 +174,7 @@ export default function AdminPanelPage() {
         {/* Line: New user signups */}
         <div className="p-6 rounded-2xl bg-[#111827] border border-[#1F2937]">
           <h3 className="font-display font-bold text-base text-white mb-1">New User Signups</h3>
-          <p className="text-xs text-gray-400 mb-4">Physician & ASHA registrations</p>
+          <p className="text-xs text-gray-400 mb-4">Physician & Health Officer registrations</p>
 
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">

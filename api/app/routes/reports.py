@@ -15,9 +15,11 @@ async def get_report_by_id(report_id: str):
 
 @router.get("/reports/user/{uid}")
 async def get_user_reports(uid: str):
+    if not uid or uid.strip() in ("", "undefined", "null"):
+        return []
     results = [
         rep for rep in db_manager.screenings.values()
-        if rep.get("userId") == uid or uid == "default_user"
+        if rep.get("userId") == uid
     ]
     return results
 

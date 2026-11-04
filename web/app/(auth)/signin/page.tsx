@@ -102,14 +102,32 @@ function SignInContent() {
 
     try {
       const cred = await signInWithPopup(auth, googleProvider)
+      const user = cred.user
       setLocalUser({
-        uid: cred.user.uid,
-        email: cred.user.email,
-        displayName: cred.user.displayName,
-        photoURL: cred.user.photoURL,
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
         isDemo: false,
       })
-      router.replace(nextRoute)
+      document.cookie = `firebase-token=${user.uid}; path=/; max-age=604800; SameSite=Lax`
+
+      // Check if user already exists in MongoDB
+      try {
+        const checkRes = await fetch(`/api/users/${user.uid}`)
+        if (checkRes.ok) {
+          const checkData = await checkRes.json()
+          if (checkData.exists && checkData.user?.onboardingComplete) {
+            router.replace(nextRoute)
+            return
+          }
+        }
+      } catch (checkErr) {
+        console.warn('User status check note:', checkErr)
+      }
+
+      // New user without role -> onboarding
+      router.replace('/onboarding?source=google')
     } catch (err: any) {
       console.warn('Google sign-in error:', err?.code || err?.message)
       if (

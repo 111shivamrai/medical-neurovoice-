@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
+  const token = request.cookies.get('firebase-token')?.value
+
+  // Protect /dashboard and /admin routes
+  if (
+    request.nextUrl.pathname.startsWith('/dashboard') ||
+    request.nextUrl.pathname.startsWith('/admin')
+  ) {
+    if (!token && !request.nextUrl.searchParams.has('demo')) {
+      const signInUrl = new URL('/signin', request.url)
+      signInUrl.searchParams.set('redirect', request.nextUrl.pathname)
+      return NextResponse.redirect(signInUrl)
+    }
+  }
+
   const response = NextResponse.next()
 
   // Apply strict no-store headers on protected dashboard & admin pages

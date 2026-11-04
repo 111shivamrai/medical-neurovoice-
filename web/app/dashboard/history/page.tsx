@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Calendar,
@@ -15,6 +15,7 @@ import {
   Minus,
   CheckCircle2,
   FileText,
+  Mic,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -55,113 +56,80 @@ interface ScreeningSession {
 
 export default function ReportsHistoryPage() {
   const [activeTab, setActiveTab] = useState<'reports' | 'timeline' | 'compare'>('reports')
-  const [expandedCard, setExpandedCard] = useState<string | null>('scr-01')
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<ScreeningSession[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const sessions: ScreeningSession[] = [
-    {
-      id: 'scr-01',
-      date: '28 Oct 2026',
-      screeningId: 'NV-8812',
-      language: 'Hindi',
-      qualityLabel: 'Good quality',
-      overallStatus: 'green',
-      overallSummary: 'Overall: No concerns detected',
-      plainSummary:
-        'Your voice steadiness, breathing support, and speaking cadence all align well with healthy benchmarks.',
-      conditions: {
-        pd: { band: 'Low', sentence: 'Voice steadiness is normal without tremor.' },
-        ad: { band: 'Low', sentence: 'Cadence and conversational pauses flow naturally.' },
-        dysarthria: { band: 'Low', sentence: 'Consonant sounds and vowels are clear.' },
-        postStroke: { band: 'Low', sentence: 'Speech rhythm and breathing support are steady.' },
-      },
-      features: {
-        voiceSteadiness: { value: '0.38%', num: 0.38, unit: '%' },
-        volumeStability: { value: '1.82%', num: 1.82, unit: '%' },
-        voiceClarity: { value: '25.1 dB', num: 25.1, unit: 'dB' },
-        pauseRatio: { value: '0.17', num: 0.17, unit: '' },
-        speakingSpeed: { value: '4.3 syl/s', num: 4.3, unit: 'syl/s' },
-      },
-    },
-    {
-      id: 'scr-02',
-      date: '14 Oct 2026',
-      screeningId: 'NV-8740',
-      language: 'English',
-      qualityLabel: 'Good quality',
-      overallStatus: 'green',
-      overallSummary: 'Overall: No concerns detected',
-      plainSummary:
-        'Conversational timing showed natural rhythm. All condition risk bands are low.',
-      conditions: {
-        pd: { band: 'Low', sentence: 'Steady phonation with clean vocal cord closure.' },
-        ad: { band: 'Low', sentence: 'Natural hesitation pauses within typical limits.' },
-        dysarthria: { band: 'Low', sentence: 'Consonants are crisp and distinct.' },
-        postStroke: { band: 'Low', sentence: 'Breath support and energy remain balanced.' },
-      },
-      features: {
-        voiceSteadiness: { value: '0.44%', num: 0.44, unit: '%' },
-        volumeStability: { value: '2.10%', num: 2.10, unit: '%' },
-        voiceClarity: { value: '23.8 dB', num: 23.8, unit: 'dB' },
-        pauseRatio: { value: '0.19', num: 0.19, unit: '' },
-        speakingSpeed: { value: '4.1 syl/s', num: 4.1, unit: 'syl/s' },
-      },
-    },
-    {
-      id: 'scr-03',
-      date: '28 Sep 2026',
-      screeningId: 'NV-8621',
-      language: 'Hindi',
-      qualityLabel: 'Good quality',
-      overallStatus: 'green',
-      overallSummary: 'Overall: No concerns detected',
-      plainSummary:
-        'Stable pitch control and good harmonic clarity throughout all three recording tasks.',
-      conditions: {
-        pd: { band: 'Low', sentence: 'No vocal tremors or loudness drops detected.' },
-        ad: { band: 'Low', sentence: 'Speaking cadence matches healthy peers.' },
-        dysarthria: { band: 'Low', sentence: 'Vowel articulation space is wide and clear.' },
-        postStroke: { band: 'Low', sentence: 'Symmetric phrasing and acoustic energy.' },
-      },
-      features: {
-        voiceSteadiness: { value: '0.48%', num: 0.48, unit: '%' },
-        volumeStability: { value: '2.25%', num: 2.25, unit: '%' },
-        voiceClarity: { value: '22.9 dB', num: 22.9, unit: 'dB' },
-        pauseRatio: { value: '0.20', num: 0.20, unit: '' },
-        speakingSpeed: { value: '4.0 syl/s', num: 4.0, unit: 'syl/s' },
-      },
-    },
-    {
-      id: 'scr-04',
-      date: '14 Sep 2026',
-      screeningId: 'NV-8490',
-      language: 'Hindi',
-      qualityLabel: 'Fair quality',
-      overallStatus: 'amber',
-      overallSummary: 'Overall: Some patterns worth monitoring',
-      plainSummary:
-        'Initial screening showed mild vocal tremor during vowel phonation. Worth following up with monthly tracking.',
-      conditions: {
-        pd: { band: 'Moderate', sentence: 'Slight micro-tremors in sustained pitch.' },
-        ad: { band: 'Low', sentence: 'Speech rhythm within normal boundaries.' },
-        dysarthria: { band: 'Low', sentence: 'Normal articulation without slurring.' },
-        postStroke: { band: 'Low', sentence: 'Sufficient breath energy and tone stability.' },
-      },
-      features: {
-        voiceSteadiness: { value: '0.88%', num: 0.88, unit: '%' },
-        volumeStability: { value: '3.12%', num: 3.12, unit: '%' },
-        voiceClarity: { value: '21.0 dB', num: 21.0, unit: 'dB' },
-        pauseRatio: { value: '0.24', num: 0.24, unit: '' },
-        speakingSpeed: { value: '3.8 syl/s', num: 3.8, unit: 'syl/s' },
-      },
-    },
-  ]
+  useEffect(() => {
+    const user = getLocalUser()
+    if (!user?.uid) {
+      setLoading(false)
+      return
+    }
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    fetch(`${apiBase}/api/reports/user/${encodeURIComponent(user.uid)}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: any[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: ScreeningSession[] = data.map((item) => {
+            const d = item.timestamp ? new Date(item.timestamp) : new Date()
+            const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+            const idShort = (item.id || 'scr-0000').slice(-6).toUpperCase()
+            const pdBand = item.bands?.pd || 'Low'
+            const adBand = item.bands?.ad || 'Low'
+            const dysBand = item.bands?.dysarthria || 'Low'
+            const strokeBand = item.bands?.postStroke || 'Low'
+
+            const hasElevated = [pdBand, adBand, dysBand, strokeBand].includes('Elevated')
+            const hasModerate = [pdBand, adBand, dysBand, strokeBand].includes('Moderate')
+            const status: 'green' | 'amber' | 'red' = hasElevated ? 'red' : hasModerate ? 'amber' : 'green'
+
+            return {
+              id: item.id || `scr-${Math.random().toString(36).substr(2, 6)}`,
+              date: dateStr,
+              screeningId: `NV-${idShort}`,
+              language: item.language === 'en' ? 'English' : 'Hindi',
+              qualityLabel: 'Good quality',
+              overallStatus: status,
+              overallSummary: item.summaryVerdict || 'Overall: Analysis complete',
+              plainSummary: item.recommendation || 'Voice metrics captured and analyzed.',
+              conditions: {
+                pd: { band: pdBand, sentence: 'Voice steadiness and harmonic stability.' },
+                ad: { band: adBand, sentence: 'Cadence and speech pause duration.' },
+                dysarthria: { band: dysBand, sentence: 'Consonant sharpness and vowel clarity.' },
+                postStroke: { band: strokeBand, sentence: 'Speech rhythm and breath support.' },
+              },
+              features: {
+                voiceSteadiness: { value: `${((item.featureVector?.jitter || 0.4) * 1).toFixed(2)}%`, num: item.featureVector?.jitter || 0.4, unit: '%' },
+                volumeStability: { value: `${((item.featureVector?.shimmer || 2.1) * 1).toFixed(2)}%`, num: item.featureVector?.shimmer || 2.1, unit: '%' },
+                voiceClarity: { value: `${((item.featureVector?.hnr || 24.2) * 1).toFixed(1)} dB`, num: item.featureVector?.hnr || 24.2, unit: 'dB' },
+                pauseRatio: { value: `${((item.featureVector?.pauseRatio || 0.18) * 1).toFixed(2)}`, num: item.featureVector?.pauseRatio || 0.18, unit: '' },
+                speakingSpeed: { value: '4.2 syl/s', num: 4.2, unit: 'syl/s' },
+              },
+            }
+          })
+          setSessions(mapped)
+          if (mapped.length > 0) setExpandedCard(mapped[0].id)
+        } else {
+          setSessions([])
+        }
+      })
+      .catch(() => setSessions([]))
+      .finally(() => setLoading(false))
+  }, [])
 
   // Compare Tab State
-  const [dateA, setDateA] = useState(sessions[0].id)
-  const [dateB, setDateB] = useState(sessions[3].id)
+  const [dateA, setDateA] = useState('')
+  const [dateB, setDateB] = useState('')
 
-  const sessionA = sessions.find((s) => s.id === dateA) || sessions[0]
-  const sessionB = sessions.find((s) => s.id === dateB) || sessions[3]
+  useEffect(() => {
+    if (sessions.length > 0 && !dateA) {
+      setDateA(sessions[0].id)
+      setDateB(sessions[1]?.id || sessions[0].id)
+    }
+  }, [sessions, dateA])
+  const sessionA = sessions.find((s) => s.id === dateA) || sessions[0] || null
+  const sessionB = sessions.find((s) => s.id === dateB) || sessions[1] || sessions[0] || null
 
   const downloadPDF = async (reportId: string) => {
     const localUser = getLocalUser()
@@ -258,23 +226,23 @@ export default function ReportsHistoryPage() {
 
       {/* ──────────────── TAB 1: REPORTS ──────────────── */}
       {activeTab === 'reports' && (
-        <div className="space-y-4">
+        <div className="max-w-[800px] mx-auto space-y-4">
           {sessions.length === 0 ? (
             <div className="text-center py-16 px-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow-sm)] flex flex-col items-center justify-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] shadow-inner">
-                <FileText size={28} className="text-[var(--primary)]" />
+              <div className="w-16 h-16 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--primary)] shadow-inner">
+                <Mic size={30} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-[var(--text)]">No screening reports yet</h3>
+                <h3 className="text-lg font-bold font-display text-[var(--text)]">No screening records yet</h3>
                 <p className="text-xs text-[var(--muted)] max-w-md leading-relaxed">
-                  You haven&apos;t completed any voice screenings yet. Take a 30-second screening to receive your acoustic assessment and downloadable clinical report.
+                  Complete a 30-second voice screening to track your neurological health over time.
                 </p>
               </div>
               <Link
                 href="/dashboard/scan"
-                className="btn-primary text-xs py-2.5 px-5 rounded-xl font-semibold shadow-sm flex items-center gap-2"
+                className="btn-primary text-xs py-2.5 px-6 rounded-full font-semibold shadow-sm flex items-center gap-2"
               >
-                <span>Take your first screening →</span>
+                <span>Start your first screening →</span>
               </Link>
             </div>
           ) : (
@@ -478,7 +446,12 @@ export default function ReportsHistoryPage() {
 
       {/* ──────────────── TAB 2: MY PROGRESS OVER TIME (RECHARTS LINE CHART) ──────────────── */}
       {activeTab === 'timeline' && (
-        <div className="p-6 sm:p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6">
+        sessions.length === 0 ? (
+          <div className="max-w-[800px] mx-auto p-12 text-center rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
+            <p className="text-sm text-[var(--muted)]">Complete screenings across multiple dates to view your longitudinal progress timeline.</p>
+          </div>
+        ) : (
+        <div className="max-w-[800px] mx-auto p-6 sm:p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6">
           <div className="space-y-1">
             <h3 className="font-display font-bold text-lg text-[var(--text)]">
               My progress over time
@@ -592,11 +565,17 @@ export default function ReportsHistoryPage() {
             Regular monthly screenings give the best picture of how your voice is changing over time.
           </div>
         </div>
+        )
       )}
 
       {/* ──────────────── TAB 3: COMPARE TWO SCREENINGS ──────────────── */}
       {activeTab === 'compare' && (
-        <div className="p-6 sm:p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6">
+        !sessionA || !sessionB ? (
+          <div className="max-w-[800px] mx-auto p-12 text-center rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
+            <p className="text-sm text-[var(--muted)]">Complete at least two voice screenings to compare acoustic biomarker differences across sessions.</p>
+          </div>
+        ) : (
+        <div className="max-w-[800px] mx-auto p-6 sm:p-8 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
             <div className="space-y-1">
               <h3 className="font-display font-bold text-lg text-[var(--text)]">
@@ -878,6 +857,7 @@ export default function ReportsHistoryPage() {
             Between {sessionB.date} and {sessionA.date}, your voice steadiness improved. Your pause patterns were similar in both recordings.
           </div>
         </div>
+        )
       )}
     </div>
   )

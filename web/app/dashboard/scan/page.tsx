@@ -20,6 +20,7 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from 'lucide-react'
 import { BRAND } from '@/lib/brand'
 import { getLocalUser } from '@/lib/auth'
@@ -31,6 +32,7 @@ interface TaskState {
   url: string | null
   duration: number
   errorMessage: string | null
+  cautionMessage?: string | null
 }
 
 export default function NewScreeningPage() {
@@ -273,9 +275,11 @@ export default function NewScreeningPage() {
     blob: Blob,
     minDuration: number,
     recordedSec: number
-  ): Promise<{ ok: boolean; error?: string; actualDuration: number }> => {
+  ): Promise<{ ok: boolean; error?: string; caution?: string; actualDuration: number }> => {
     const durationToTest = Math.max(recordedSec, 0)
-    if (durationToTest < minDuration) {
+
+    // HARD BLOCK 1: Duration < 1.0s (truly accidental tap)
+    if (durationToTest < 1.0) {
       return {
         ok: false,
         error: `Recording too short (${durationToTest}s). Please speak for at least ${minDuration} seconds.`,
@@ -293,7 +297,8 @@ export default function NewScreeningPage() {
       const audioBuffer = await ctx.decodeAudioData(arrayBuf.slice(0))
       const audioDuration = audioBuffer.duration
 
-      if (audioDuration < minDuration - 0.2) {
+      // Hard block if actual audio file is under 1.0s
+      if (audioDuration < 1.0) {
         return {
           ok: false,
           error: `Recording too short (${audioDuration.toFixed(1)}s). Please speak for at least ${minDuration} seconds.`,
@@ -301,9 +306,9 @@ export default function NewScreeningPage() {
         }
       }
 
-      // Voice Amplitude / Voice Detected check
+      // Voice Amplitude check
       const channel = audioBuffer.getChannelData(0)
-      let sumSq = 0
+      let sum = 0
       let peak = 0
       const sampleStep = Math.max(1, Math.floor(channel.length / 8000))
       let samplesCount = 0
@@ -311,31 +316,43 @@ export default function NewScreeningPage() {
       for (let i = 0; i < channel.length; i += sampleStep) {
         const val = Math.abs(channel[i])
         if (val > peak) peak = val
-        sumSq += val * val
+        sum += val
         samplesCount++
       }
-      const rms = Math.sqrt(sumSq / Math.max(1, samplesCount))
+      const meanAmplitude = sum / Math.max(1, samplesCount)
 
-      if (peak < 0.015 || rms < 0.0035) {
+      // HARD BLOCK 2: Microphone is completely silent (< 0.0005 amplitude)
+      if (meanAmplitude < 0.0005 && peak < 0.001) {
         return {
           ok: false,
-          error: 'No voice detected. Please check your microphone and speak clearly.',
+          error: 'No voice detected (microphone is silent). Please check your microphone input.',
           actualDuration: Number(audioDuration.toFixed(1)),
         }
       }
 
-      // Room Noise Check
-      if (snrValue < 12) {
-        return {
-          ok: false,
-          error: 'Background noise is too high. Please move to a quieter spot and try again.',
-          actualDuration: Number(audioDuration.toFixed(1)),
-        }
+      // Soft yellow caution if slightly below target or mildly low volume
+      let cautionMsg = ''
+      if (audioDuration < minDuration - 0.2) {
+        cautionMsg = `Recording duration is ${audioDuration.toFixed(1)}s (target: ${minDuration}s). Proceeding with acoustic sample.`
       }
 
-      return { ok: true, actualDuration: Number(audioDuration.toFixed(1)) }
+      // Amplitude threshold: meanAmplitude > 0.003
+      if (meanAmplitude < 0.003) {
+        cautionMsg = (cautionMsg ? cautionMsg + ' ' : '') + 'Voice volume is low. Moving closer to the microphone is recommended.'
+      }
+
+      // SNR threshold for "too noisy": 8dB
+      if (snrValue < 8) {
+        cautionMsg = (cautionMsg ? cautionMsg + ' ' : '') + 'Background noise detected. Moving to a quieter spot is recommended.'
+      }
+
+      return {
+        ok: true,
+        caution: cautionMsg || undefined,
+        actualDuration: Number(audioDuration.toFixed(1)),
+      }
     } catch {
-      if (durationToTest < minDuration) {
+      if (durationToTest < 1.0) {
         return {
           ok: false,
           error: `Recording too short (${durationToTest}s). Please speak for at least ${minDuration} seconds.`,
@@ -354,11 +371,11 @@ export default function NewScreeningPage() {
     audioChunksRef.current = []
 
     if (taskId === 'a') {
-      setTaskA((prev) => ({ ...prev, status: 'recording', errorMessage: null }))
+      setTaskA((prev) => ({ ...prev, status: 'recording', errorMessage: null, cautionMessage: null }))
     } else if (taskId === 'b') {
-      setTaskB((prev) => ({ ...prev, status: 'recording', errorMessage: null }))
+      setTaskB((prev) => ({ ...prev, status: 'recording', errorMessage: null, cautionMessage: null }))
     } else if (taskId === 'c') {
-      setTaskC((prev) => ({ ...prev, status: 'recording', errorMessage: null }))
+      setTaskC((prev) => ({ ...prev, status: 'recording', errorMessage: null, cautionMessage: null }))
     }
 
     try {
@@ -381,7 +398,8 @@ export default function NewScreeningPage() {
       timerRef.current = setInterval(() => {
         setTimerCount((prev) => {
           const next = prev + 1
-          if (taskId === 'c' && next >= 15 && !chimePlayedRef.current) {
+          // Task C: 10s chime mark
+          if (taskId === 'c' && next >= 10 && !chimePlayedRef.current) {
             chimePlayedRef.current = true
             playSoftChime()
           }
@@ -395,7 +413,7 @@ export default function NewScreeningPage() {
       timerRef.current = setInterval(() => {
         setTimerCount((prev) => {
           const next = prev + 1
-          if (taskId === 'c' && next >= 15 && !chimePlayedRef.current) {
+          if (taskId === 'c' && next >= 10 && !chimePlayedRef.current) {
             chimePlayedRef.current = true
             playSoftChime()
           }
@@ -422,8 +440,17 @@ export default function NewScreeningPage() {
 
   // Handle post-recording validation checks
   const handleTaskRecordingFinished = async (taskId: 'a' | 'b' | 'c', blob: Blob) => {
-    const minDur = taskId === 'a' ? 3 : taskId === 'b' ? 2 : 15
+    // Show validating spinner state first
+    if (taskId === 'a') setTaskA((prev) => ({ ...prev, status: 'validating' }))
+    else if (taskId === 'b') setTaskB((prev) => ({ ...prev, status: 'validating' }))
+    else if (taskId === 'c') setTaskC((prev) => ({ ...prev, status: 'validating' }))
+
+    // Task durations: Task A: 2.5s, Task B: 1.5s, Task C: 10s
+    const minDur = taskId === 'a' ? 2.5 : taskId === 'b' ? 1.5 : 10
     const finalSec = timerCount
+
+    // Short processing delay for clean verification feel
+    await new Promise((r) => setTimeout(r, 300))
 
     const result = await validateAudioChecks(blob, minDur, finalSec)
 
@@ -435,6 +462,7 @@ export default function NewScreeningPage() {
           status: 'error',
           duration: result.actualDuration,
           errorMessage: err,
+          cautionMessage: null,
         }))
       } else if (taskId === 'b') {
         setTaskB((prev) => ({
@@ -442,6 +470,7 @@ export default function NewScreeningPage() {
           status: 'error',
           duration: result.actualDuration,
           errorMessage: err,
+          cautionMessage: null,
         }))
       } else if (taskId === 'c') {
         setTaskC((prev) => ({
@@ -449,6 +478,7 @@ export default function NewScreeningPage() {
           status: 'error',
           duration: result.actualDuration,
           errorMessage: err,
+          cautionMessage: null,
         }))
       }
       return
@@ -463,6 +493,7 @@ export default function NewScreeningPage() {
         url: audioUrl,
         duration: result.actualDuration,
         errorMessage: null,
+        cautionMessage: result.caution || null,
       })
       setTaskB((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
     } else if (taskId === 'b') {
@@ -472,6 +503,7 @@ export default function NewScreeningPage() {
         url: audioUrl,
         duration: result.actualDuration,
         errorMessage: null,
+        cautionMessage: result.caution || null,
       })
       setTaskC((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
     } else if (taskId === 'c') {
@@ -481,6 +513,7 @@ export default function NewScreeningPage() {
         url: audioUrl,
         duration: result.actualDuration,
         errorMessage: null,
+        cautionMessage: result.caution || null,
       })
     }
   }
@@ -1022,23 +1055,20 @@ export default function NewScreeningPage() {
                       Task A: Hold the sound
                     </h3>
                     <span className="text-[11px] text-[var(--muted)] font-mono">
-                      Minimum required duration: 3 seconds
+                      Minimum required duration: 2.5 seconds
                     </span>
                   </div>
                 </div>
 
-                {/* Real-time Duration Counter per Task 7 */}
-                {taskA.duration > 0 && (
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                      taskA.status === 'passed'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
-                    }`}
-                  >
-                    {taskA.status === 'passed'
-                      ? `Recorded: ${taskA.duration.toFixed(1)} seconds ✓`
-                      : `Recorded: ${taskA.duration.toFixed(1)} seconds ✗ Too short`}
+                {/* Status Badge */}
+                {taskA.status === 'passed' && (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                    Recorded: {taskA.duration.toFixed(1)} seconds ✓
+                  </span>
+                )}
+                {taskA.status === 'error' && (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300">
+                    Recorded: {taskA.duration.toFixed(1)}s ✗ Try again
                   </span>
                 )}
               </div>
@@ -1050,6 +1080,14 @@ export default function NewScreeningPage() {
                   : 'Take a deep breath and say "aah" steadily for as long as you can in a clear, normal voice.'}
               </div>
 
+              {/* Validating State Spinner */}
+              {taskA.status === 'validating' && (
+                <div className="p-4 mb-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text)] flex items-center gap-3">
+                  <Loader2 size={16} className="animate-spin text-[var(--primary)]" />
+                  <span className="font-semibold">Checking your recording...</span>
+                </div>
+              )}
+
               {/* Error Message if checks failed */}
               {taskA.errorMessage && (
                 <div className="p-3 mb-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
@@ -1059,7 +1097,7 @@ export default function NewScreeningPage() {
               )}
 
               {/* Controls */}
-              {taskA.status !== 'passed' ? (
+              {taskA.status !== 'passed' && taskA.status !== 'validating' ? (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
                   <div className="flex items-center gap-3">
                     <button
@@ -1082,7 +1120,7 @@ export default function NewScreeningPage() {
                       ) : (
                         <>
                           <Mic size={15} />
-                          <span>Record &quot;Aah&quot; (Min 3s)</span>
+                          <span>Record &quot;Aah&quot; (Min 2.5s)</span>
                         </>
                       )}
                     </button>
@@ -1093,20 +1131,39 @@ export default function NewScreeningPage() {
                     )}
                   </div>
                 </div>
-              ) : (
-                /* Passed State Preview with listen back playback bar */
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-                  {taskA.url && <audio controls src={taskA.url} className="h-9 w-full sm:w-72" />}
-                  <button
-                    type="button"
-                    onClick={() => handleRerecord('a')}
-                    className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shrink-0"
-                  >
-                    <RotateCcw size={13} />
-                    <span>Re-record</span>
-                  </button>
+              ) : taskA.status === 'passed' ? (
+                /* Passed State: Green Confirmation Banner per Fix 5 */
+                <div className="space-y-3 pt-1">
+                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="font-semibold">✓ Recording verified — good quality</span>
+                    </div>
+                    <span className="font-mono text-[11px] font-bold">
+                      Recorded: {taskA.duration.toFixed(1)} seconds
+                    </span>
+                  </div>
+
+                  {taskA.cautionMessage && (
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
+                      <span>{taskA.cautionMessage}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                    {taskA.url && <audio controls src={taskA.url} className="h-9 w-full sm:w-72" />}
+                    <button
+                      type="button"
+                      onClick={() => handleRerecord('a')}
+                      className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shrink-0"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Re-record</span>
+                    </button>
+                  </div>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* ──────── TASK B: READ THIS ALOUD (Renamed per Task 7) ──────── */}
@@ -1143,7 +1200,7 @@ export default function NewScreeningPage() {
                       Task B: Read this aloud
                     </h3>
                     <span className="text-[11px] text-[var(--muted)] font-mono">
-                      Minimum required duration: 2 seconds
+                      Minimum required duration: 1.5 seconds
                     </span>
                   </div>
                 </div>
@@ -1153,17 +1210,14 @@ export default function NewScreeningPage() {
                     Complete Task A to unlock
                   </span>
                 )}
-                {taskB.duration > 0 && (
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                      taskB.status === 'passed'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
-                    }`}
-                  >
-                    {taskB.status === 'passed'
-                      ? `Recorded: ${taskB.duration.toFixed(1)} seconds ✓`
-                      : `Recorded: ${taskB.duration.toFixed(1)} seconds ✗ Too short`}
+                {taskB.status === 'passed' && (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                    Recorded: {taskB.duration.toFixed(1)} seconds ✓
+                  </span>
+                )}
+                {taskB.status === 'error' && (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300">
+                    Recorded: {taskB.duration.toFixed(1)}s ✗ Try again
                   </span>
                 )}
               </div>
@@ -1175,6 +1229,14 @@ export default function NewScreeningPage() {
                   : '"The morning sun reflects clearly across the calm river water."'}
               </div>
 
+              {/* Validating State Spinner */}
+              {taskB.status === 'validating' && (
+                <div className="p-4 mb-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text)] flex items-center gap-3">
+                  <Loader2 size={16} className="animate-spin text-[var(--primary)]" />
+                  <span className="font-semibold">Checking your recording...</span>
+                </div>
+              )}
+
               {/* Error Message if checks failed */}
               {taskB.errorMessage && (
                 <div className="p-3 mb-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
@@ -1184,7 +1246,7 @@ export default function NewScreeningPage() {
               )}
 
               {/* Controls */}
-              {taskB.status !== 'locked' && taskB.status !== 'passed' && (
+              {taskB.status !== 'locked' && taskB.status !== 'passed' && taskB.status !== 'validating' && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
                   <div className="flex items-center gap-3">
                     <button
@@ -1207,7 +1269,7 @@ export default function NewScreeningPage() {
                       ) : (
                         <>
                           <Mic size={15} />
-                          <span>Record Sentence (Min 2s)</span>
+                          <span>Record Sentence (Min 1.5s)</span>
                         </>
                       )}
                     </button>
@@ -1221,16 +1283,35 @@ export default function NewScreeningPage() {
               )}
 
               {taskB.status === 'passed' && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-                  {taskB.url && <audio controls src={taskB.url} className="h-9 w-full sm:w-72" />}
-                  <button
-                    type="button"
-                    onClick={() => handleRerecord('b')}
-                    className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shrink-0"
-                  >
-                    <RotateCcw size={13} />
-                    <span>Re-record</span>
-                  </button>
+                <div className="space-y-3 pt-1">
+                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="font-semibold">✓ Recording verified — good quality</span>
+                    </div>
+                    <span className="font-mono text-[11px] font-bold">
+                      Recorded: {taskB.duration.toFixed(1)} seconds
+                    </span>
+                  </div>
+
+                  {taskB.cautionMessage && (
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
+                      <span>{taskB.cautionMessage}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                    {taskB.url && <audio controls src={taskB.url} className="h-9 w-full sm:w-72" />}
+                    <button
+                      type="button"
+                      onClick={() => handleRerecord('b')}
+                      className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shrink-0"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Re-record</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1269,7 +1350,7 @@ export default function NewScreeningPage() {
                       Task C: Talk for a moment
                     </h3>
                     <span className="text-[11px] text-[var(--muted)] font-mono">
-                      Minimum required duration: 15 seconds
+                      Minimum required duration: 10 seconds
                     </span>
                   </div>
                 </div>
@@ -1279,17 +1360,14 @@ export default function NewScreeningPage() {
                     Complete Task B to unlock
                   </span>
                 )}
-                {taskC.duration > 0 && (
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                      taskC.status === 'passed'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300'
-                    }`}
-                  >
-                    {taskC.status === 'passed'
-                      ? `Recorded: ${taskC.duration.toFixed(1)} seconds ✓`
-                      : `Recorded: ${taskC.duration.toFixed(1)} seconds ✗ Too short`}
+                {taskC.status === 'passed' && (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                    Recorded: {taskC.duration.toFixed(1)} seconds ✓
+                  </span>
+                )}
+                {taskC.status === 'error' && (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300">
+                    Recorded: {taskC.duration.toFixed(1)}s ✗ Try again
                   </span>
                 )}
               </div>
@@ -1297,8 +1375,8 @@ export default function NewScreeningPage() {
               {/* Instruction */}
               <div className="p-3.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text)] mb-4 leading-relaxed">
                 {language === 'hi'
-                  ? 'कम से कम 15 सेकंड तक सामान्य रूप से बोलें: आज सुबह आपने क्या किया, क्या खाया, या आज आपकी क्या योजना है।'
-                  : 'Speak naturally for at least 15 seconds about what you did this morning, what you ate, or what your plans are today.'}
+                  ? 'कम से कम 10 सेकंड तक सामान्य रूप से बोलें: आज सुबह आपने क्या किया, क्या खाया, या आज आपकी क्या योजना है।'
+                  : 'Speak naturally for at least 10 seconds about what you did this morning, what you ate, or what your plans are today.'}
               </div>
 
               {/* Live Counting Timer for Task C */}
@@ -1312,12 +1390,20 @@ export default function NewScreeningPage() {
                   </div>
                   <div
                     className={`text-xs font-mono font-bold ${
-                      timerCount >= 15 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text)]'
+                      timerCount >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text)]'
                     }`}
                   >
-                    {formatTimer(timerCount, 15)}
-                    {timerCount >= 15 && ' · 15s chime reached ✓'}
+                    {formatTimer(timerCount, 10)}
+                    {timerCount >= 10 && ' · 10s chime reached ✓'}
                   </div>
+                </div>
+              )}
+
+              {/* Validating State Spinner */}
+              {taskC.status === 'validating' && (
+                <div className="p-4 mb-4 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text)] flex items-center gap-3">
+                  <Loader2 size={16} className="animate-spin text-[var(--primary)]" />
+                  <span className="font-semibold">Checking your recording...</span>
                 </div>
               )}
 
@@ -1330,7 +1416,7 @@ export default function NewScreeningPage() {
               )}
 
               {/* Controls */}
-              {taskC.status !== 'locked' && taskC.status !== 'passed' && (
+              {taskC.status !== 'locked' && taskC.status !== 'passed' && taskC.status !== 'validating' && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
                   <div className="flex items-center gap-3">
                     <button
@@ -1353,13 +1439,13 @@ export default function NewScreeningPage() {
                       ) : (
                         <>
                           <Mic size={15} />
-                          <span>Record Speech (Min 15s)</span>
+                          <span>Record Speech (Min 10s)</span>
                         </>
                       )}
                     </button>
                     {activeRecordingTask === 'c' && (
                       <span className="text-xs font-mono text-[var(--muted)]">
-                        Soft chime will sound at 15s mark.
+                        Soft chime will sound at 10s mark.
                       </span>
                     )}
                   </div>
@@ -1367,16 +1453,35 @@ export default function NewScreeningPage() {
               )}
 
               {taskC.status === 'passed' && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-                  {taskC.url && <audio controls src={taskC.url} className="h-9 w-full sm:w-72" />}
-                  <button
-                    type="button"
-                    onClick={() => handleRerecord('c')}
-                    className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shrink-0"
-                  >
-                    <RotateCcw size={13} />
-                    <span>Re-record</span>
-                  </button>
+                <div className="space-y-3 pt-1">
+                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="font-semibold">✓ Recording verified — good quality</span>
+                    </div>
+                    <span className="font-mono text-[11px] font-bold">
+                      Recorded: {taskC.duration.toFixed(1)} seconds
+                    </span>
+                  </div>
+
+                  {taskC.cautionMessage && (
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
+                      <span>{taskC.cautionMessage}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                    {taskC.url && <audio controls src={taskC.url} className="h-9 w-full sm:w-72" />}
+                    <button
+                      type="button"
+                      onClick={() => handleRerecord('c')}
+                      className="btn-ghost text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shrink-0"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Re-record</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

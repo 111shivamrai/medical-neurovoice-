@@ -20,8 +20,8 @@ export function FAQSection() {
       a: 'Yes. Hindi and English are natively supported. Our acoustic pipeline relies on language-independent biophysical features — including fundamental frequency tremor (jitter), amplitude instability (shimmer), harmonic-to-noise ratio (HNR), and formant centralisation — alongside phonetic prompts designed specifically for Hindi vowel phonation (e.g. sustained "आ..." phonation).',
     },
     {
-      q: 'What is Community Health Worker Mode (formerly ASHA Mode)?',
-      a: 'Community Health Worker Mode is a high-contrast, offline-capable interface designed specifically for frontline healthcare providers, including ASHA (Accredited Social Health Activist, a village-level community health worker in India). It features audio-guided instructions in Hindi, simplified three-tier results (Green / Yellow / Red), and generates instant WhatsApp referral slips for rural primary health centres without requiring patient internet logins.',
+      q: 'Can I take a screening from my home or smartphone?',
+      a: 'Yes. NeuroVoice runs directly in any modern mobile or desktop web browser without downloading any apps or buying specialized microphones. All you need is 30 seconds in a quiet room.',
     },
     {
       q: 'Is my voice recording stored or shared on the internet?',

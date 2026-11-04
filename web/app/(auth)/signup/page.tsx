@@ -306,9 +306,9 @@ function SignUpContent() {
       color: '#1E40AF',
     },
     {
-      id: 'chw' as RoleId,
-      title: 'Community Health Worker (ASHA)',
-      desc: 'Simple three-tier triage (Green/Yellow/Red) and referral slips in rural clinics.',
+      id: 'community' as RoleId,
+      title: 'Community / Public Health',
+      desc: 'Screen participants with objective voice analysis and specialist referral tracking.',
       icon: HeartPulse,
       color: '#0D7377',
     },

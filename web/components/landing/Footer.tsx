@@ -44,11 +44,6 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <Link href="/simple" className="text-[var(--primary)] font-semibold hover:underline">
-                  Community Health Worker Mode →
-                </Link>
-              </li>
-              <li>
                 <Link href="/signin" className="hover:text-[var(--text)] transition-colors">
                   Sign In
                 </Link>

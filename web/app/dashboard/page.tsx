@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Users,
   HeartPulse,
+  Bot,
 } from 'lucide-react'
 import { subscribeToAuth, UserSession } from '@/lib/auth'
 import dynamic from 'next/dynamic'
@@ -329,17 +330,17 @@ export default function DashboardHomePage() {
         </Link>
 
         <Link
-          href="/simple"
+          href="/dashboard/ask"
           className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:border-[var(--accent)] transition-all flex items-center gap-3.5 group"
         >
           <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center shrink-0">
-            <HeartPulse size={20} />
+            <Bot size={20} />
           </div>
           <div>
             <div className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-              Community Health Worker Mode
+              Ask NeuroVoice Assistant
             </div>
-            <div className="text-[11px] text-[var(--muted)]">High-contrast, audio-guided Hindi screening</div>
+            <div className="text-[11px] text-[var(--muted)]">Voice & condition guidance powered by Gemini AI</div>
           </div>
         </Link>
 

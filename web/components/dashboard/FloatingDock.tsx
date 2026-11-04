@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   LogOut,
   ChevronUp,
+  Bot,
 } from 'lucide-react'
 
 export function FloatingDock() {
@@ -27,6 +28,7 @@ export function FloatingDock() {
   const isReports = pathname.startsWith('/dashboard/reports') || pathname.startsWith('/dashboard/history')
   const isScan = pathname === '/dashboard/scan'
   const isCare = pathname.startsWith('/dashboard/doctors') || pathname.startsWith('/dashboard/appointments')
+  const isAsk = pathname === '/dashboard/ask'
   const isMe = pathname.startsWith('/dashboard/profile') || pathname.startsWith('/admin')
 
   // Check demo user role
@@ -228,7 +230,21 @@ export function FloatingDock() {
             </span>
           </button>
 
-          {/* 5. Me */}
+          {/* 5. Ask (AI Health Assistant) */}
+          <Link
+            href="/dashboard/ask"
+            onClick={() => setActiveMenu(null)}
+            className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+              isAsk
+                ? 'text-[var(--accent)] font-semibold scale-105'
+                : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+            }`}
+          >
+            <Bot size={20} />
+            <span className="text-[10px] tracking-tight">Ask</span>
+          </Link>
+
+          {/* 6. Me */}
           <button
             type="button"
             onClick={() => toggleMenu('me')}

@@ -24,27 +24,28 @@ export function FinalCTASection() {
           Start your free screening today.
         </h2>
 
-        <p className="text-base sm:text-lg text-[var(--text-muted)] max-w-xl mx-auto mb-8 leading-relaxed">
+        <p className="text-base sm:text-lg text-[var(--muted)] max-w-xl mx-auto mb-8 leading-relaxed">
           It takes 30 seconds. In Hindi or English. On any smartphone or computer without special hardware.
         </p>
 
+        {/* Exactly two buttons: Create Free Account and Sign In */}
         <div className="flex flex-wrap justify-center items-center gap-4">
           <Link
             href="/signup"
-            className="btn-primary px-8 py-4 text-base font-semibold text-white rounded-xl shadow-lg"
+            className="btn-primary px-8 py-3.5 text-sm sm:text-base font-semibold text-white rounded-xl shadow-lg flex items-center gap-2"
           >
-            Create Free Account
+            <span>Create Free Account</span>
             <ArrowRight size={18} />
           </Link>
           <Link
-            href="/simple"
-            className="px-6 py-4 rounded-xl text-sm font-semibold bg-[var(--surface-2)] text-[var(--text)] hover:border-[var(--accent)] border border-[var(--border)] transition-all"
+            href="/signin"
+            className="btn-ghost px-6 py-3.5 rounded-xl text-sm sm:text-base font-semibold border border-[var(--border)] transition-all"
           >
-            ASHA Worker Mode (No login) →
+            <span>Sign In →</span>
           </Link>
         </div>
 
-        <p className="text-xs text-[var(--text-muted)] mt-6">
+        <p className="text-xs text-[var(--muted)] mt-6">
           Zero installation required. Privacy-first: voice data is processed for acoustic features and immediately deleted.
         </p>
       </div>

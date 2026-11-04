@@ -28,21 +28,21 @@ export function UserTypesSection() {
       ctaHref: '/signin',
     },
     {
-      id: 'asha',
-      role: 'Community Health Workers (ASHA)',
+      id: 'personal',
+      role: 'Individuals & Families',
       icon: HeartPulse,
       accent: 'var(--accent)',
-      badge: 'Rural Primary Health Centers',
+      badge: 'Personal Health Awareness',
       description:
-        'One button. Simple Hindi voice guidance. Three high-contrast outcomes (Green, Yellow, Red). Built for ASHA (Accredited Social Health Activist, a village-level community health worker in India).',
+        'A 30-second non-invasive voice screening you can do from home. Plain-language insights and guidance on when to consult a specialist.',
       benefits: [
-        'Single tap to record Hindi vowel prompt',
-        'Clear action: Green, Yellow, or Red',
-        'Zero complex clinical terminology',
-        'Instant shareable WhatsApp referral slip',
+        'Single tap to record voice prompt',
+        'Clear action: Low, Moderate, or Elevated',
+        'Dual-layer plain English and Hindi explanations',
+        'Direct connection to certified neurologists',
       ],
-      ctaText: 'Community Health Worker Mode →',
-      ctaHref: '/simple',
+      ctaText: 'Start Screening →',
+      ctaHref: '/signup',
     },
     {
       id: 'researcher',
@@ -78,7 +78,7 @@ export function UserTypesSection() {
             Who Uses NeuroVoice
           </h2>
           <p className="text-base sm:text-lg text-[var(--text-muted)] leading-relaxed">
-            From rural ASHA workers in remote villages of Madhya Pradesh to tertiary care neurologists in hospital OPDs.
+            From individual health screenings at home to tertiary care neurologists in hospital OPDs.
           </p>
         </div>
 

@@ -18,6 +18,7 @@ import {
   X,
   HeartPulse,
   SlidersHorizontal,
+  Sparkles,
 } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -114,13 +115,13 @@ export function CommandPalette({ open, setOpen, onOpenChange }: CommandPalettePr
                   </Command.Item>
 
                   <Command.Item
-                    onSelect={() => navigateTo('/simple')}
+                    onSelect={() => navigateTo('/dashboard/ask')}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-[var(--surface-2)] text-xs font-semibold text-[var(--text)] transition-colors"
                   >
                     <div className="w-7 h-7 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
-                      <HeartPulse size={15} />
+                      <Sparkles size={15} />
                     </div>
-                    <span>Open Community Health Worker Mode (Hindi-First)</span>
+                    <span>Ask NeuroVoice AI Assistant</span>
                   </Command.Item>
                 </Command.Group>
 

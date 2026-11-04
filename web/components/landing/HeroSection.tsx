@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Activity } from 'lucide-react'
@@ -22,12 +22,45 @@ const RobotCanvas = dynamic(
 
 export function HeroSection() {
   const [isMobile, setIsMobile] = useState(false)
+  const [conditionsCount, setConditionsCount] = useState(4)
+  const [measurementsCount, setMeasurementsCount] = useState(20)
+  const statRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const checkWidth = () => setIsMobile(window.innerWidth < 768)
     checkWidth()
     window.addEventListener('resize', checkWidth)
-    return () => window.removeEventListener('resize', checkWidth)
+
+    // Scroll-triggered counter animation
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setConditionsCount(0)
+          setMeasurementsCount(0)
+          let c = 0
+          const timerC = setInterval(() => {
+            c += 1
+            setConditionsCount(c)
+            if (c >= 4) clearInterval(timerC)
+          }, 140)
+
+          let m = 0
+          const timerM = setInterval(() => {
+            m += 2
+            setMeasurementsCount(m)
+            if (m >= 20) clearInterval(timerM)
+          }, 55)
+        }
+      },
+      { threshold: 0.2 }
+    )
+
+    if (statRef.current) observer.observe(statRef.current)
+
+    return () => {
+      window.removeEventListener('resize', checkWidth)
+      observer.disconnect()
+    }
   }, [])
 
   return (
@@ -138,12 +171,25 @@ export function HeroSection() {
               </Link>
             </motion.div>
 
-            {/* Exact Required Stat Line */}
-            <div className="w-full pt-5 border-t border-[var(--border)]">
-              <div className="p-3.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-xs sm:text-sm font-medium text-[var(--text)] flex items-center gap-2.5 shadow-sm">
+            {/* Exact Required Stat Line with Animated Sine Wave & Number Counter */}
+            <div ref={statRef} className="relative w-full pt-5 border-t border-[var(--border)] overflow-hidden">
+              {/* Animated SVG sine waveform */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none opacity-20"
+                preserveAspectRatio="none"
+                viewBox="0 0 600 80"
+              >
+                <path
+                  d="M0,40 Q75,10 150,40 T300,40 T450,40 T600,40"
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="2.5"
+                />
+              </svg>
+              <div className="relative z-10 p-3.5 rounded-xl bg-[var(--surface)]/90 backdrop-blur-sm border border-[var(--border)] text-xs sm:text-sm font-medium text-[var(--text)] flex items-center gap-2.5 shadow-sm card-hover-lift">
                 <Activity size={18} className="text-[var(--primary)] shrink-0" />
                 <span>
-                  <strong>4 conditions screened</strong> · 20+ voice measurements · Hindi and English · Works on any phone
+                  <strong>{conditionsCount} conditions screened</strong> · {measurementsCount}+ voice measurements · Hindi and English · Works on any phone
                 </span>
               </div>
             </div>

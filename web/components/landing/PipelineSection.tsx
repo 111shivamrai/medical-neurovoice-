@@ -128,17 +128,27 @@ export function PipelineSection() {
   const CurrentIcon = current.icon
 
   return (
-    <section id="pipeline" className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--surface)] border-b border-[var(--border)] transition-colors duration-200">
-      <div className="max-w-7xl mx-auto space-y-12">
+    <section
+      id="pipeline"
+      className="py-24 px-4 sm:px-6 lg:px-8 border-b border-blue-900/40 text-white relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0A1628 0%, #1B3FA0 100%)' }}
+    >
+      {/* Background Ambient Glow */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
+        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-400 rounded-full blur-[128px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600 rounded-full blur-[128px]" />
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-12 relative z-10">
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-3">
-          <span className="text-xs font-mono font-semibold tracking-wider uppercase text-[var(--accent)]">
+          <span className="text-xs font-mono font-bold tracking-wider uppercase text-cyan-400 bg-cyan-950/60 border border-cyan-800/60 px-3 py-1 rounded-full inline-block">
             Transparent Architecture
           </span>
-          <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-[var(--text)] tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-white tracking-tight">
             The 9-Stage Acoustic Pipeline
           </h2>
-          <p className="text-sm sm:text-base text-[var(--muted)] leading-relaxed">
+          <p className="text-sm sm:text-base text-blue-100/80 leading-relaxed">
             Every step from the moment you speak to the final report is explained plainly. Click any stage to inspect what happens.
           </p>
         </div>
@@ -154,8 +164,8 @@ export function PipelineSection() {
                 onClick={() => handleSelectStage(idx)}
                 className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
                   isSelected
-                    ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm'
-                    : 'bg-[var(--surface-2)] text-[var(--text)] border-[var(--border)] hover:border-[var(--primary)]'
+                    ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-300 shadow-lg scale-105'
+                    : 'bg-white/10 text-white/90 border-white/15 hover:bg-white/20 hover:border-cyan-400/50'
                 }`}
               >
                 <span className="font-mono text-xs font-bold">{st.number}</span>
@@ -170,18 +180,18 @@ export function PipelineSection() {
         {/* Detailed Stage Inspector Card */}
         <div
           ref={detailRef}
-          className="p-6 sm:p-8 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] shadow-[var(--shadow-sm)] space-y-6"
+          className="p-6 sm:p-8 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-cyan-500/30 shadow-2xl space-y-6"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-cyan-500 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-md">
                 <CurrentIcon size={24} />
               </div>
               <div>
-                <span className="text-xs font-mono font-bold text-[var(--accent)] uppercase tracking-wider">
+                <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">
                   Stage {current.number} · {current.category}
                 </span>
-                <h3 className="text-xl sm:text-2xl font-display font-bold text-[var(--text)]">
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-white">
                   {current.title}
                 </h3>
               </div>
@@ -192,7 +202,7 @@ export function PipelineSection() {
                 type="button"
                 disabled={selectedStage === 0}
                 onClick={() => setSelectedStage((prev) => Math.max(0, prev - 1))}
-                className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold disabled:opacity-40"
+                className="px-3 py-1.5 rounded-lg border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold disabled:opacity-30 transition-colors"
               >
                 ← Prev Stage
               </button>
@@ -200,7 +210,7 @@ export function PipelineSection() {
                 type="button"
                 disabled={selectedStage === stages.length - 1}
                 onClick={() => setSelectedStage((prev) => Math.min(stages.length - 1, prev + 1))}
-                className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold disabled:opacity-40"
+                className="px-3 py-1.5 rounded-lg border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold disabled:opacity-30 transition-colors"
               >
                 Next Stage →
               </button>
@@ -208,20 +218,20 @@ export function PipelineSection() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2 p-5 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
-              <div className="text-xs font-mono font-bold text-[var(--primary)] uppercase">
+            <div className="space-y-2 p-5 rounded-xl bg-white/5 border border-white/10">
+              <div className="text-xs font-mono font-bold text-cyan-400 uppercase">
                 What This Means in Plain Words
               </div>
-              <p className="text-sm text-[var(--text)] leading-relaxed">
+              <p className="text-sm text-slate-100 leading-relaxed">
                 {current.plainText}
               </p>
             </div>
 
-            <div className="space-y-2 p-5 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
-              <div className="text-xs font-mono font-bold text-[var(--accent)] uppercase">
+            <div className="space-y-2 p-5 rounded-xl bg-white/5 border border-white/10">
+              <div className="text-xs font-mono font-bold text-cyan-300 uppercase">
                 Clinical & Engineering Implementation
               </div>
-              <p className="text-xs text-[var(--muted)] font-mono leading-relaxed">
+              <p className="text-xs text-blue-200/90 font-mono leading-relaxed">
                 {current.technicalDetails}
               </p>
             </div>
