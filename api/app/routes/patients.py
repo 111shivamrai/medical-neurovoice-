@@ -27,7 +27,7 @@ class UserCreateModel(BaseModel):
 @router.get("/users/{uid}")
 async def get_user_by_uid(uid: str):
     if not uid or uid.strip() in ("", "undefined", "null"):
-        return {"exists": False, "user": None}
+        raise HTTPException(status_code=404, detail="User not found")
 
     user_data = None
     if db_manager.is_connected and db_manager.db is not None:
@@ -41,7 +41,7 @@ async def get_user_by_uid(uid: str):
 
     if user_data:
         return {"exists": True, "user": user_data}
-    return {"exists": False, "user": None}
+    raise HTTPException(status_code=404, detail="User not found")
 
 @router.post("/users/create")
 async def create_user(payload: UserCreateModel):

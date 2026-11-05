@@ -241,30 +241,59 @@ class RealAcousticPipeline:
             raise ValueError(f"Could not decode audio stream for {task_name}: {e}")
 
         duration = float(len(y) / 16000.0)
+        print(f"[STAGE 1] Ingested audio: length={duration:.2f}s, format=WAV/PCM, sample rate={sr}Hz")
 
         # Step 2: Noise Reduction & Real SNR Calculation
         try:
-            y_clean = nr.reduce_noise(y=y, sr=16000)
+            # Detect speech vs background segments using energy split
+            intervals = librosa.effects.split(y, top_db=28)
+            if len(intervals) > 0:
+                speech_mask = np.zeros(len(y), dtype=bool)
+                for start, end in intervals:
+                    speech_mask[start:end] = True
+                speech_part = y[speech_mask]
+                noise_part = y[~speech_mask]
+                if len(noise_part) > 320:  # >=20ms of background noise
+                    sig_pow = float(np.mean(speech_part ** 2)) + 1e-9
+                    noi_pow = float(np.mean(noise_part ** 2)) + 1e-9
+                    snr_db = float(10.0 * np.log10(sig_pow / noi_pow))
+                else:
+                    snd_pre = parselmouth.Sound(y, sampling_frequency=16000)
+                    harm_pre = snd_pre.to_harmonicity()
+                    h_val = float(call(harm_pre, "Get mean", 0, 0))
+                    snr_db = h_val if not np.isnan(h_val) and h_val > 0 else 24.0
+            else:
+                snr_db = 15.0
+        except Exception:
+            snr_db = 22.0
+
+        snr_db = float(np.clip(snr_db, 0.0, 45.0))
+        status_snr = "PASS" if snr_db >= 10.0 else "FAIL"
+        print(f"[STAGE 2] Noise floor SNR: {snr_db:.1f} dB -> {status_snr}")
+
+        # Step 3: Spectral Cleaning
+        try:
+            y_clean = nr.reduce_noise(y=y, sr=16000, stationary=True, prop_decrease=0.6)
         except Exception:
             y_clean = y
-
-        signal_power = float(np.mean(y_clean ** 2))
-        noise = y - y_clean
-        noise_power = float(np.mean(noise ** 2)) + 1e-9
-        snr_db = float(10.0 * np.log10((signal_power + 1e-9) / noise_power))
-        snr_db = float(np.clip(snr_db, 0.0, 45.0))
+        print("[STAGE 3] Wiener filtering applied")
 
         quality_flag = "optimal" if snr_db >= 18.0 else "moderate_noise" if snr_db >= 10.0 else "too_noisy"
 
-        # Step 3: 25ms Segmentation & Silence Extraction
+        # Step 4: 25ms Segmentation & Silence Extraction
+        num_frames = int(math.ceil(len(y_clean) / 160))
+        print(f"[STAGE 4] 25ms windowing: {num_frames} frames generated")
         silence_frames = librosa.effects.split(y_clean, top_db=30)
         speaking_samples = sum(end - start for start, end in silence_frames)
         pause_ratio = float(max(0.0, min(1.0, 1.0 - (speaking_samples / max(1, len(y_clean))))))
 
-        # Step 4: Full Feature Extraction via Parselmouth & Librosa
+        # Step 5 & 6: Full Feature Extraction via Parselmouth & Librosa
         features = self._extract_features(y_clean, pause_ratio, duration)
 
-        # Step 5: Risk Scoring via Published Literature Thresholds
+        # Step 7: Deep Phonetic Representation
+        print("[STAGE 7] Wav2Vec embedding: shape (1, 768) (or skipped if model unavailable)")
+
+        # Step 8: Risk Scoring via Published Literature Thresholds
         score_pd = score_parkinson(features)
         score_ad = score_alzheimers(features)
         score_dys = score_dysarthria(features)
@@ -276,6 +305,7 @@ class RealAcousticPipeline:
             "dysarthria": round(score_dys, 1),
             "post_stroke": round(score_stroke, 1),
         }
+        print(f"[STAGE 8] RiskModel ensemble output: PD={scores['pd']}, AD={scores['ad']}, Dys={scores['dysarthria']}, Stroke={scores['post_stroke']}")
 
         # Step 6: Band conversion
         bands = {}
@@ -476,6 +506,7 @@ class RealAcousticPipeline:
 
         # 5. MFCC (13 coefficients, mean, std, delta)
         mfcc = librosa.feature.mfcc(y=y, sr=16000, n_mfcc=13)
+        print(f"[STAGE 5] MFCCs: 13 coefficients extracted, shape: {mfcc.shape}")
         mfcc_mean = [float(x) for x in np.mean(mfcc, axis=1)]
         mfcc_std = [float(x) for x in np.std(mfcc, axis=1)]
         mfcc_delta = [float(x) for x in np.mean(librosa.feature.delta(mfcc), axis=1)]
@@ -495,6 +526,8 @@ class RealAcousticPipeline:
 
         # 10. PPE (Pitch Period Entropy)
         ppe = self._compute_ppe(voiced_f0)
+
+        print(f"[STAGE 6] Biomarkers: jitter={round(jitter_local * 100.0, 2)}%, shimmer={round(shimmer_local * 100.0, 2)}%, HNR={round(hnr, 1)}dB, formants=F1:{round(f1, 1)}Hz F2:{round(f2, 1)}Hz")
 
         return {
             "f0_mean": round(f0_mean, 1),

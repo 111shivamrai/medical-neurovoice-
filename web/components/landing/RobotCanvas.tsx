@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Volume2, VolumeX, MessageSquareQuote, Bot, Sparkles } from 'lucide-react'
+import { Volume2, VolumeX, MessageSquareQuote } from 'lucide-react'
 
 export interface RobotCanvasProps {
   mode?: 'hero' | 'chat'
@@ -19,795 +19,742 @@ interface RobotModelProps {
   mode: 'hero' | 'chat'
 }
 
-/**
- * Procedural Holographic Screen Textures (ECG Waveform & Telemetry Data)
- * Exact match to Image 1's glowing cyan medical background monitors
- */
-function useHolographicTextures() {
-  return useMemo(() => {
-    if (typeof document === 'undefined') return { ecgTexture: null, dataTexture: null }
+const ROBOT_GREETINGS = [
+  { text: "Hello! I am NeuroVoice AI, your vocal screening assistant. Ready to assess your voice health?", lang: "en-US" },
+  { text: "नमस्ते! मैं न्यूरोवॉइस एआई हूँ। आपकी आवाज़ के स्वास्थ्य की जांच के लिए तैयार हूँ।", lang: "hi-IN" },
+  { text: "Voice biomarkers can reveal early neurological changes years before severe symptoms.", lang: "en-US" },
+  { text: "आपकी आवाज़ में सूक्ष्म बदलाव बहुत कुछ बता सकते हैं। चलिए 30 सेकंड की जांच शुरू करें।", lang: "hi-IN" },
+  { text: "I monitor vocal fold stability, vowel precision, and natural conversational cadence.", lang: "en-US" },
+  { text: "हम पार्किंसंस, अल्जाइमर और डिस्आर्थ्रिया के शुरुआती संकेतों का विश्लेषण करते हैं।", lang: "hi-IN" },
+  { text: "Clear speech and steady breathing help capture the highest acoustic quality.", lang: "en-US" },
+  { text: "यह जांच सरल, सुरक्षित और आपके फोन के माइक्रोफोन पर पूरी तरह काम करती है।", lang: "hi-IN" },
+  { text: "Our multi-task clinical protocol takes just thirty seconds across three voice prompts.", lang: "en-US" },
+  { text: "शुरू करने के लिए 'Start Free Screening' पर क्लिक करें।", lang: "hi-IN" },
+]
 
-    // 1. Left Screen: ECG Waveform & Vitals Monitor
+/**
+ * Creates dynamic textures for Holographic Screens
+ */
+function useHolographicCanvases() {
+  return useMemo(() => {
+    if (typeof document === 'undefined') return { ecgTexture: null, rightScreenTexture: null }
+
+    // Left Screen: Animated ECG Waveform Canvas
     const ecgCanvas = document.createElement('canvas')
-    ecgCanvas.width = 512
-    ecgCanvas.height = 340
+    ecgCanvas.width = 1024
+    ecgCanvas.height = 512
     const ctx1 = ecgCanvas.getContext('2d')
     if (ctx1) {
-      ctx1.fillStyle = '#06162B'
-      ctx1.fillRect(0, 0, 512, 340)
+      ctx1.fillStyle = 'rgba(5, 15, 40, 0.92)'
+      ctx1.fillRect(0, 0, 1024, 512)
 
-      // Grid
-      ctx1.strokeStyle = 'rgba(34, 211, 238, 0.15)'
-      ctx1.lineWidth = 1
-      for (let x = 0; x < 512; x += 32) {
+      // Subtle cyan grid
+      ctx1.strokeStyle = 'rgba(34, 211, 238, 0.18)'
+      ctx1.lineWidth = 1.5
+      for (let x = 0; x < 1024; x += 64) {
         ctx1.beginPath()
         ctx1.moveTo(x, 0)
-        ctx1.lineTo(x, 340)
+        ctx1.lineTo(x, 512)
         ctx1.stroke()
       }
-      for (let y = 0; y < 340; y += 32) {
+      for (let y = 0; y < 512; y += 64) {
         ctx1.beginPath()
         ctx1.moveTo(0, y)
-        ctx1.lineTo(512, y)
+        ctx1.lineTo(1024, y)
         ctx1.stroke()
       }
 
-      // Title & Telemetry Header
+      // Title & labels
       ctx1.fillStyle = '#22D3EE'
-      ctx1.font = 'bold 16px monospace'
-      ctx1.fillText('NEUROVOICE · ACOUSTIC MONITOR v2.4', 20, 32)
+      ctx1.font = 'bold 24px monospace'
+      ctx1.fillText('NEUROVOICE · ACOUSTIC MONITOR v2.8', 40, 48)
 
-      ctx1.font = '12px monospace'
-      ctx1.fillStyle = 'rgba(148, 163, 184, 0.9)'
-      ctx1.fillText('GLOTTAL STABILITY: NOMINAL [98.4%]', 20, 56)
-      ctx1.fillText('VOCAL FOLD HARMONICS: 24.2 dB', 20, 74)
+      ctx1.fillStyle = 'rgba(34, 211, 238, 0.35)'
+      ctx1.fillRect(40, 72, 380, 8)
+      ctx1.fillRect(40, 92, 260, 6)
 
-      // Glowing Cyan ECG Waveform
+      // Continuous ECG repeating waveform pattern
       ctx1.shadowColor = '#22D3EE'
-      ctx1.shadowBlur = 12
+      ctx1.shadowBlur = 14
       ctx1.strokeStyle = '#22D3EE'
-      ctx1.lineWidth = 3
+      ctx1.lineWidth = 4
       ctx1.beginPath()
-      const ecgPoints = [
-        [0, 180], [60, 180], [80, 175], [95, 185], [110, 180],
-        [140, 180], [155, 195], [170, 90], [185, 230], [200, 170],
-        [215, 180], [250, 180], [270, 165], [290, 180],
-        [340, 180], [355, 195], [370, 90], [385, 230], [400, 170],
-        [415, 180], [460, 180], [512, 180]
-      ]
-      ecgPoints.forEach(([x, y], i) => {
-        if (i === 0) ctx1.moveTo(x, y)
-        else ctx1.lineTo(x, y)
-      })
+      const segWidth = 512
+      for (let offset = 0; offset <= 1024; offset += segWidth) {
+        const pts = [
+          [offset, 300], [offset + 70, 300], [offset + 95, 290], [offset + 115, 310], [offset + 135, 300],
+          [offset + 170, 300], [offset + 190, 325], [offset + 210, 140], [offset + 230, 380], [offset + 250, 280],
+          [offset + 270, 300], [offset + 320, 300], [offset + 350, 275], [offset + 380, 300], [offset + segWidth, 300]
+        ]
+        pts.forEach(([x, y], i) => {
+          if (offset === 0 && i === 0) ctx1.moveTo(x, y)
+          else ctx1.lineTo(x, y)
+        })
+      }
       ctx1.stroke()
       ctx1.shadowBlur = 0
 
-      // Pulse rate block
-      ctx1.fillStyle = 'rgba(34, 211, 238, 0.12)'
-      ctx1.fillRect(20, 240, 160, 70)
-      ctx1.strokeStyle = '#22D3EE'
-      ctx1.strokeRect(20, 240, 160, 70)
+      // Glowing Pulse Circle
       ctx1.fillStyle = '#FFFFFF'
-      ctx1.font = 'bold 28px monospace'
-      ctx1.fillText('72 BPM', 36, 280)
-      ctx1.font = '11px monospace'
+      ctx1.beginPath()
+      ctx1.arc(210, 140, 10, 0, Math.PI * 2)
+      ctx1.fill()
       ctx1.fillStyle = '#22D3EE'
-      ctx1.fillText('STEADY CADENCE', 36, 298)
+      ctx1.beginPath()
+      ctx1.arc(210, 140, 18, 0, Math.PI * 2)
+      ctx1.fill()
     }
 
-    // 2. Right Screen: Neurological Anatomical Wireframe & Data Columns
-    const dataCanvas = document.createElement('canvas')
-    dataCanvas.width = 512
-    dataCanvas.height = 340
-    const ctx2 = dataCanvas.getContext('2d')
+    // Right Screen: Human body outline & Data readout chart
+    const rightCanvas = document.createElement('canvas')
+    rightCanvas.width = 1024
+    rightCanvas.height = 768
+    const ctx2 = rightCanvas.getContext('2d')
     if (ctx2) {
-      ctx2.fillStyle = '#06162B'
-      ctx2.fillRect(0, 0, 512, 340)
+      ctx2.fillStyle = 'rgba(5, 15, 40, 0.92)'
+      ctx2.fillRect(0, 0, 1024, 768)
 
       // Grid
-      ctx2.strokeStyle = 'rgba(34, 211, 238, 0.12)'
-      ctx2.lineWidth = 1
-      for (let x = 0; x < 512; x += 32) {
+      ctx2.strokeStyle = 'rgba(34, 211, 238, 0.15)'
+      ctx2.lineWidth = 1.5
+      for (let x = 0; x < 1024; x += 64) {
         ctx2.beginPath()
         ctx2.moveTo(x, 0)
-        ctx2.lineTo(x, 340)
+        ctx2.lineTo(x, 768)
         ctx2.stroke()
       }
-      for (let y = 0; y < 340; y += 32) {
+      for (let y = 0; y < 768; y += 64) {
         ctx2.beginPath()
         ctx2.moveTo(0, y)
-        ctx2.lineTo(512, y)
+        ctx2.lineTo(1024, y)
         ctx2.stroke()
       }
 
       ctx2.fillStyle = '#22D3EE'
-      ctx2.font = 'bold 15px monospace'
-      ctx2.fillText('NEURAL BIOMARKER TELEMETRY', 20, 32)
+      ctx2.font = 'bold 24px monospace'
+      ctx2.fillText('NEURO-ANATOMICAL TELEMETRY', 40, 50)
 
-      ctx2.font = '11px monospace'
-      ctx2.fillStyle = 'rgba(148, 163, 184, 0.9)'
-      ctx2.fillText('CH 1: JITTER PERTURBATION   0.38% [OK]', 20, 60)
-      ctx2.fillText('CH 2: SHIMMER AMPLITUDE     1.82% [OK]', 20, 80)
-      ctx2.fillText('CH 3: HARMONIC RATIO        25.1 dB [OK]', 20, 100)
-      ctx2.fillText('CH 4: FORMANT DISPERSION    F1/F2 STABLE', 20, 120)
+      // Vertical data readout chart lines
+      for (let i = 0; i < 7; i++) {
+        const y = 110 + i * 45
+        ctx2.fillStyle = 'rgba(34, 211, 238, 0.4)'
+        ctx2.fillRect(40, y, 160 + (i * 47) % 220, 12)
+        ctx2.fillStyle = '#FFFFFF'
+        ctx2.font = '16px monospace'
+        ctx2.fillText(`CH-0${i + 1} NOMINAL`, 460, y + 10)
+      }
 
-      // Silhouette / Anatomical wireframe outline
+      // Stick figure / anatomical outline with circles for joints
+      const cx = 820
+      const cy = 360
       ctx2.strokeStyle = '#22D3EE'
-      ctx2.lineWidth = 2
+      ctx2.lineWidth = 4
+      ctx2.fillStyle = '#22D3EE'
+
+      // Head
       ctx2.beginPath()
-      ctx2.arc(380, 100, 30, 0, Math.PI * 2) // Head
-      ctx2.moveTo(380, 130)
-      ctx2.lineTo(380, 240) // Spine
-      ctx2.moveTo(340, 160)
-      ctx2.lineTo(420, 160) // Shoulders
+      ctx2.arc(cx, cy - 140, 40, 0, Math.PI * 2)
+      ctx2.stroke()
+      // Spine
+      ctx2.beginPath()
+      ctx2.moveTo(cx, cy - 100)
+      ctx2.lineTo(cx, cy + 80)
+      ctx2.stroke()
+      // Shoulders & Arms
+      ctx2.beginPath()
+      ctx2.moveTo(cx - 70, cy - 40)
+      ctx2.lineTo(cx + 70, cy - 40)
+      ctx2.lineTo(cx + 90, cy + 40)
+      ctx2.moveTo(cx - 70, cy - 40)
+      ctx2.lineTo(cx - 90, cy + 40)
+      ctx2.stroke()
+      // Legs
+      ctx2.beginPath()
+      ctx2.moveTo(cx, cy + 80)
+      ctx2.lineTo(cx - 50, cy + 220)
+      ctx2.moveTo(cx, cy + 80)
+      ctx2.lineTo(cx + 50, cy + 220)
       ctx2.stroke()
 
-      // Concentric brain wave arcs
-      ctx2.strokeStyle = 'rgba(34, 211, 238, 0.5)'
-      ctx2.beginPath()
-      ctx2.arc(380, 100, 42, -Math.PI * 0.7, -Math.PI * 0.3)
-      ctx2.stroke()
-      ctx2.beginPath()
-      ctx2.arc(380, 100, 52, -Math.PI * 0.75, -Math.PI * 0.25)
-      ctx2.stroke()
-
-      // Diagnostic Status Bar
-      ctx2.fillStyle = 'rgba(16, 185, 129, 0.2)'
-      ctx2.fillRect(20, 250, 470, 50)
-      ctx2.strokeStyle = '#10B981'
-      ctx2.strokeRect(20, 250, 470, 50)
-      ctx2.fillStyle = '#10B981'
-      ctx2.font = 'bold 14px monospace'
-      ctx2.fillText('✓ CLINICAL PROTOCOL: ACTIVE READY', 36, 280)
+      // Joint circles
+      ;[[cx - 70, cy - 40], [cx + 70, cy - 40], [cx - 90, cy + 40], [cx + 90, cy + 40], [cx, cy + 80], [cx - 50, cy + 220], [cx + 50, cy + 220]].forEach(([jx, jy]) => {
+        ctx2.beginPath()
+        ctx2.arc(jx, jy, 8, 0, Math.PI * 2)
+        ctx2.fill()
+      })
     }
 
     const t1 = new THREE.CanvasTexture(ecgCanvas)
-    const t2 = new THREE.CanvasTexture(dataCanvas)
-    return { ecgTexture: t1, dataTexture: t2 }
+    t1.wrapS = THREE.RepeatWrapping
+    t1.wrapT = THREE.ClampToEdgeWrapping
+    const t2 = new THREE.CanvasTexture(rightCanvas)
+    return { ecgTexture: t1, rightScreenTexture: t2 }
   }, [])
 }
 
 /**
- * 3D Humanoid Medical AI Robot Model
- * Master Prompt 7, Fix 1: Exact Image 1 Specifications
- * Doctor's white coat with lapel crease, stethoscope around neck,
- * clipboard in left hand, right hand welcoming/pointing,
- * cyan glowing eyes with PointLight, segmented ring neck, circular head ring.
+ * 5-Finger Hand Builder (Point gesture or Grip gesture)
  */
-function MedicalAIRobotModel({
-  mouse,
-  isSpeaking,
-  isClicking,
-  isMobile,
-  mode,
-}: RobotModelProps) {
-  const rootGroupRef = useRef<THREE.Group>(null)
-  const headRef = useRef<THREE.Group>(null)
-  const leftEyeRef = useRef<THREE.Mesh>(null)
-  const rightEyeRef = useRef<THREE.Mesh>(null)
-  const leftEyeLightRef = useRef<THREE.PointLight>(null)
-  const rightEyeLightRef = useRef<THREE.PointLight>(null)
-  const mouthRef = useRef<THREE.Mesh>(null)
-  const bodyRef = useRef<THREE.Group>(null)
-  const rightArmRef = useRef<THREE.Group>(null)
-  const stethoscopeRef = useRef<THREE.Group>(null)
-  const foreheadGlowRef = useRef<THREE.Mesh>(null)
-
-  const { ecgTexture, dataTexture } = useHolographicTextures()
-
-  // Track click animation timer
-  const clickAnimTimer = useRef(0)
-
-  useFrame((state, delta) => {
-    const time = state.clock.getElapsedTime()
-
-    // 1. IDLE ANIMATIONS
-    // Slow floating translateY from 0 to -8px (approx 0.08 units in 3D scene), 4s ease loop
-    if (rootGroupRef.current) {
-      rootGroupRef.current.position.y = -0.22 + Math.sin(time * (Math.PI / 2)) * 0.04
-    }
-
-    // Breathing: scale.y oscillates 0.98 to 1.0, 3s loop
-    if (bodyRef.current) {
-      const breathScaleY = 0.99 + Math.sin(time * ((Math.PI * 2) / 3)) * 0.01
-      bodyRef.current.scale.set(1.0, breathScaleY, 1.0)
-    }
-
-    // 2. MOUSE FOLLOW (Head only, lerp 0.05, max ±0.3 rad)
-    if (headRef.current) {
-      if (mode === 'chat') {
-        headRef.current.rotation.y = Math.sin(time * 0.8) * 0.05
-        headRef.current.rotation.x = Math.sin(time * 0.5) * 0.03
-      } else if (isMobile) {
-        headRef.current.rotation.y += Math.sin(time * 0.5) * 0.003
-      } else {
-        const targetRotY = THREE.MathUtils.clamp((mouse.x - 0.5) * 0.4, -0.3, 0.3)
-        const targetRotX = THREE.MathUtils.clamp((mouse.y - 0.5) * -0.2, -0.3, 0.3)
-        headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, targetRotY, 0.05)
-        headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, targetRotX, 0.05)
-      }
-
-      // 4. CLICK ANIMATION (Tilt head 15 deg = 0.26 rad to the right for 0.5s, then return)
-      if (isClicking) {
-        clickAnimTimer.current = 0.5
-      }
-      if (clickAnimTimer.current > 0) {
-        clickAnimTimer.current -= delta
-        headRef.current.rotation.z = THREE.MathUtils.lerp(headRef.current.rotation.z, 0.26, 0.15)
-      } else {
-        headRef.current.rotation.z = THREE.MathUtils.lerp(headRef.current.rotation.z, 0, 0.1)
-      }
-    }
-
-    // 3. SPEAKING ANIMATION
-    let targetGlow = 1.1 + Math.sin(time * Math.PI) * 0.3
-    if (isSpeaking) {
-      targetGlow = 2.0 + Math.sin(time * 10) * 0.4
-    }
-    if (clickAnimTimer.current > 0.25) {
-      targetGlow = 3.0
-    }
-
-    if (leftEyeRef.current?.material) {
-      const mat = leftEyeRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = targetGlow
-    }
-    if (rightEyeRef.current?.material) {
-      const mat = rightEyeRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = targetGlow
-    }
-    if (leftEyeLightRef.current) leftEyeLightRef.current.intensity = targetGlow * 0.9
-    if (rightEyeLightRef.current) rightEyeLightRef.current.intensity = targetGlow * 0.9
-
-    if (foreheadGlowRef.current?.material) {
-      const mat = foreheadGlowRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = isSpeaking ? 1.8 : 0.9 + Math.sin(time * 2) * 0.3
-    }
-
-    // Mouth animation: opens and closes when speaking
-    if (mouthRef.current) {
-      if (isSpeaking) {
-        mouthRef.current.scale.y = 0.5 + 0.5 * Math.abs(Math.sin(time * 8))
-        mouthRef.current.scale.x = 1.0 + 0.2 * Math.sin(time * 6)
-      } else {
-        mouthRef.current.scale.set(1.0, 0.25, 1.0)
-      }
-    }
-
-    // Pointing welcoming arm gesture: lifts slightly while speaking
-    if (rightArmRef.current) {
-      if (isSpeaking) {
-        rightArmRef.current.rotation.z = 0.25 - Math.sin(time * 4) * 0.1
-        rightArmRef.current.rotation.x = -0.15 + Math.sin(time * 3) * 0.08
-      } else {
-        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, 0.22, 0.05)
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, -0.1, 0.05)
-      }
-    }
-
-    // Stethoscope sways gently
-    if (stethoscopeRef.current) {
-      stethoscopeRef.current.rotation.z = Math.sin(time * 2) * 0.02
-    }
-  })
-
-  // Body Material: White/off-white matte (#F0F4F8, metalness: 0.05, roughness: 0.4)
-  const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#F0F4F8',
-    metalness: 0.05,
-    roughness: 0.4,
-  }), [])
-
-  // Head Material: #E8EEF4 (slightly cooler white than body)
-  const headMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#E8EEF4',
-    metalness: 0.05,
-    roughness: 0.35,
-  }), [])
-
-  // Chrome / Metallic Hardware Material
-  const chromeMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#E2E8F0',
-    metalness: 0.9,
-    roughness: 0.15,
-  }), [])
+function RoboticHand({ isPointing = false, isLeft = false }: { isPointing?: boolean; isLeft?: boolean }) {
+  const jointMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#B8C8D8', metalness: 0.6, roughness: 0.3 }), [])
+  const fingerMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#E8EEF5', metalness: 0.08, roughness: 0.35 }), [])
+  const palmMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#E8EEF5', metalness: 0.08, roughness: 0.35 }), [])
 
   return (
-    <group ref={rootGroupRef} position={[0, -0.2, 0]}>
-      {/* ─── HOLOGRAPHIC MEDICAL SCREEN MONITORS IN BACKGROUND (Image 1 Match) ─── */}
-      <group position={[0, 0.35, -1.25]}>
-        {/* Left Screen: ECG Waveform */}
-        <mesh position={[-1.02, 0.1, 0]} rotation={[0, 0.22, 0]}>
-          <planeGeometry args={[1.05, 0.7]} />
-          {ecgTexture ? (
-            <meshBasicMaterial map={ecgTexture} transparent opacity={0.82} side={THREE.DoubleSide} />
-          ) : (
-            <meshBasicMaterial color="#0D2540" transparent opacity={0.6} side={THREE.DoubleSide} />
-          )}
+    <group scale={isLeft ? [-1, 1, 1] : [1, 1, 1]}>
+      {/* Palm connecting all fingers */}
+      <mesh material={palmMat} position={[0, -0.05, 0]}>
+        <boxGeometry args={[0.095, 0.1, 0.045]} />
+      </mesh>
+
+      {/* Index Finger (Straightened and pointing up/forward if pointing) */}
+      <group position={[0.032, -0.1, 0.01]} rotation={isPointing ? [-0.65, 0, 0.15] : [0.9, 0, 0]}>
+        <mesh material={fingerMat} position={[0, -0.027, 0]}>
+          <cylinderGeometry args={[0.016, 0.014, 0.055, 16]} />
         </mesh>
-        {/* Cyan Frame Left */}
-        <mesh position={[-1.02, 0.1, 0.01]} rotation={[0, 0.22, 0]}>
-          <planeGeometry args={[1.07, 0.72]} />
-          <meshBasicMaterial color="#22D3EE" wireframe transparent opacity={0.35} />
+        <mesh material={jointMat} position={[0, -0.055, 0]}>
+          <torusGeometry args={[0.015, 0.005, 12, 16]} />
         </mesh>
-
-        {/* Right Screen: Anatomical & Feature Telemetry */}
-        <mesh position={[1.02, 0.1, 0]} rotation={[0, -0.22, 0]}>
-          <planeGeometry args={[1.05, 0.7]} />
-          {dataTexture ? (
-            <meshBasicMaterial map={dataTexture} transparent opacity={0.82} side={THREE.DoubleSide} />
-          ) : (
-            <meshBasicMaterial color="#0D2540" transparent opacity={0.6} side={THREE.DoubleSide} />
-          )}
-        </mesh>
-        {/* Cyan Frame Right */}
-        <mesh position={[1.02, 0.1, 0.01]} rotation={[0, -0.22, 0]}>
-          <planeGeometry args={[1.07, 0.72]} />
-          <meshBasicMaterial color="#22D3EE" wireframe transparent opacity={0.35} />
-        </mesh>
-      </group>
-
-      {/* ─── HUMAN BODY / TORSO WITH DOCTOR LAB COAT (Image 1 Match) ─── */}
-      <group ref={bodyRef}>
-        {/* Main Humanoid Torso */}
-        <mesh position={[0, -0.48, 0]} material={bodyMat}>
-          <cylinderGeometry args={[0.52, 0.62, 0.95, 32]} />
-        </mesh>
-
-        {/* Inner Shirt Collar (Crisp White) */}
-        <mesh position={[0, -0.16, 0.42]}>
-          <boxGeometry args={[0.26, 0.18, 0.08]} />
-          <meshStandardMaterial color="#FFFFFF" roughness={0.3} />
-        </mesh>
-
-        {/* Dark Navy Medical Tie */}
-        <mesh position={[0, -0.28, 0.44]} rotation={[0.08, 0, 0]}>
-          <cylinderGeometry args={[0.045, 0.065, 0.32, 16]} />
-          <meshStandardMaterial color="#0A2540" roughness={0.5} />
-        </mesh>
-
-        {/* Doctor Coat Left Chest Panel with subtle lapel crease */}
-        <mesh position={[-0.22, -0.36, 0.44]} rotation={[0.04, 0.14, 0.18]}>
-          <boxGeometry args={[0.24, 0.64, 0.06]} />
-          <meshStandardMaterial color="#FFFFFF" roughness={0.35} metalness={0.02} />
-        </mesh>
-
-        {/* Doctor Coat Right Chest Panel */}
-        <mesh position={[0.22, -0.36, 0.44]} rotation={[0.04, -0.14, -0.18]}>
-          <boxGeometry args={[0.24, 0.64, 0.06]} />
-          <meshStandardMaterial color="#FFFFFF" roughness={0.35} metalness={0.02} />
-        </mesh>
-
-        {/* Shoulder Armor Pads (Rounded Humanoid Contours) */}
-        <mesh position={[-0.56, -0.18, 0.02]} scale={[1.25, 0.85, 1.0]} material={bodyMat}>
-          <sphereGeometry args={[0.18, 24, 24]} />
-        </mesh>
-        <mesh position={[0.56, -0.18, 0.02]} scale={[1.25, 0.85, 1.0]} material={bodyMat}>
-          <sphereGeometry args={[0.18, 24, 24]} />
-        </mesh>
-
-        {/* STETHOSCOPE (Around Neck & Hanging Down - Image 1 Match) */}
-        <group ref={stethoscopeRef}>
-          {/* Torus tube draped around neck & shoulders */}
-          <mesh position={[0, -0.04, 0.18]} rotation={[Math.PI / 2 - 0.35, 0, 0]}>
-            <torusGeometry args={[0.28, 0.018, 16, 32, Math.PI]} />
-            <meshStandardMaterial color="#1E293B" roughness={0.3} metalness={0.4} />
+        <group position={[0, -0.055, 0]} rotation={isPointing ? [0.1, 0, 0] : [0.7, 0, 0]}>
+          <mesh material={fingerMat} position={[0, -0.027, 0]}>
+            <cylinderGeometry args={[0.014, 0.012, 0.055, 16]} />
           </mesh>
-          {/* Stethoscope Left Tube Stem */}
-          <mesh position={[-0.14, -0.32, 0.44]} rotation={[0.15, 0, -0.06]}>
-            <cylinderGeometry args={[0.014, 0.014, 0.36, 16]} />
-            <meshStandardMaterial color="#1E293B" roughness={0.3} metalness={0.4} />
+          <mesh material={jointMat} position={[0, -0.055, 0]}>
+            <torusGeometry args={[0.013, 0.005, 12, 16]} />
           </mesh>
-          {/* Stethoscope Right Tube Stem */}
-          <mesh position={[0.13, -0.34, 0.45]} rotation={[0.16, 0, 0.08]}>
-            <cylinderGeometry args={[0.014, 0.014, 0.4, 16]} />
-            <meshStandardMaterial color="#1E293B" roughness={0.3} metalness={0.4} />
-          </mesh>
-          {/* Stethoscope Metallic Chest Piece / Bell */}
-          <mesh position={[0.14, -0.55, 0.48]} rotation={[Math.PI / 2, 0, 0]} material={chromeMat}>
-            <cylinderGeometry args={[0.055, 0.055, 0.02, 24]} />
-          </mesh>
-          {/* Inner Cyan Bell Ring */}
-          <mesh position={[0.14, -0.55, 0.492]} rotation={[Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.04, 24]} />
-            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
-          </mesh>
-        </group>
-
-        {/* Segmented Rings Neck (3x TorusGeometry stacked per spec) */}
-        {/* Central Spine Core */}
-        <mesh position={[0, 0.07, 0]}>
-          <cylinderGeometry args={[0.15, 0.15, 0.18, 24]} />
-          <meshStandardMaterial color="#0F172A" roughness={0.5} metalness={0.8} />
-        </mesh>
-        {/* Vertical Cervical Hydraulic Pistons */}
-        {[-0.12, -0.04, 0.04, 0.12].map((x, i) => (
-          <mesh key={`piston-${i}`} position={[x, 0.07, -0.06]}>
-            <cylinderGeometry args={[0.015, 0.015, 0.18, 12]} />
-            <meshStandardMaterial color="#CBD5E1" roughness={0.2} metalness={0.9} />
-          </mesh>
-        ))}
-
-        <mesh position={[0, 0.01, 0]}>
-          <torusGeometry args={[0.22, 0.03, 16, 32]} />
-          <meshStandardMaterial color="#64748B" roughness={0.3} metalness={0.7} />
-        </mesh>
-        <mesh position={[0, 0.07, 0]}>
-          <torusGeometry args={[0.19, 0.028, 16, 32]} />
-          <meshStandardMaterial color="#94A3B8" roughness={0.3} metalness={0.7} />
-        </mesh>
-        <mesh position={[0, 0.13, 0]}>
-          <torusGeometry args={[0.17, 0.025, 16, 32]} />
-          <meshStandardMaterial color="#CBD5E1" roughness={0.3} metalness={0.7} />
-        </mesh>
-
-        {/* Throat Actuator Center Ring (Image 1 characteristic) */}
-        <mesh position={[0, 0.06, 0.2]}>
-          <cylinderGeometry args={[0.05, 0.05, 0.03, 24]} />
-          <meshStandardMaterial color="#1E293B" metalness={0.8} />
-        </mesh>
-        <mesh position={[0, 0.06, 0.22]}>
-          <circleGeometry args={[0.03, 24]} />
-          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.4} />
-        </mesh>
-      </group>
-
-      {/* ─── HEAD (Humanoid Sleek Android - Exact Image 1 Match) ─── */}
-      <group ref={headRef} position={[0, 0.52, 0]}>
-        {/* Sleek Humanoid Head Cranium (#E8EEF4) */}
-        <mesh position={[0, 0.04, -0.02]} scale={[0.92, 1.12, 0.88]} material={headMat}>
-          <sphereGeometry args={[0.54, 32, 32]} />
-        </mesh>
-
-
-
-        {/* Forehead Circular Diagnostic Ring (Image 1 Iconic Forehead Sensor) */}
-        <group position={[0, 0.32, 0.42]} rotation={[0.24, 0, 0]}>
-          {/* Outer Chrome Ring */}
-          <mesh>
-            <torusGeometry args={[0.088, 0.015, 16, 32]} />
-            <meshStandardMaterial color="#CBD5E1" roughness={0.25} metalness={0.8} />
-          </mesh>
-          {/* Cyan Glowing Middle Ring */}
-          <mesh position={[0, 0, 0.004]}>
-            <torusGeometry args={[0.055, 0.012, 16, 32]} />
-            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.2} />
-          </mesh>
-          {/* Inner Cyan Glowing Disc */}
-          <mesh ref={foreheadGlowRef} position={[0, 0, 0.008]}>
-            <circleGeometry args={[0.038, 32]} />
-            <meshStandardMaterial
-              color="#22D3EE"
-              emissive="#22D3EE"
-              emissiveIntensity={1.3}
-              roughness={0.1}
-            />
-          </mesh>
-          {/* Center Dark Core Dot */}
-          <mesh position={[0, 0, 0.014]}>
-            <circleGeometry args={[0.016, 24]} />
-            <meshStandardMaterial color="#04101E" roughness={0.9} />
-          </mesh>
-        </group>
-
-        {/* Upper Forehead Accent Rings (Image 1 side skull nodes) */}
-        <mesh position={[-0.24, 0.34, 0.32]} rotation={[0.3, -0.4, 0]}>
-          <torusGeometry args={[0.045, 0.009, 16, 24]} />
-          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
-        </mesh>
-        <mesh position={[0.24, 0.34, 0.32]} rotation={[0.3, 0.4, 0]}>
-          <torusGeometry args={[0.045, 0.009, 16, 24]} />
-          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={0.8} />
-        </mesh>
-
-        {/* Circular Detail Ring on Top of Head (#B0C4D8) */}
-        <mesh position={[0, 0.58, 0.02]} rotation={[Math.PI / 2 + 0.12, 0, 0]}>
-          <torusGeometry args={[0.16, 0.026, 16, 32]} />
-          <meshStandardMaterial color="#B0C4D8" roughness={0.25} metalness={0.5} />
-        </mesh>
-
-        {/* Side Headset Ear Modules (Sleek White & Cyan like Image 1) */}
-        <group position={[-0.52, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <mesh>
-            <cylinderGeometry args={[0.12, 0.12, 0.08, 24]} />
-            <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.2} />
-          </mesh>
-          <mesh position={[0, 0.042, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.08, 0.012, 16, 24]} />
-            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.0} />
-          </mesh>
-        </group>
-
-        <group position={[0.52, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <mesh>
-            <cylinderGeometry args={[0.12, 0.12, 0.08, 24]} />
-            <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.2} />
-          </mesh>
-          <mesh position={[0, -0.042, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.08, 0.012, 16, 24]} />
-            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.0} />
-          </mesh>
-        </group>
-
-        {/* Sculpted Humanoid Nose (Image 1 clean refined android nose) */}
-        <mesh position={[0, 0.04, 0.49]} rotation={[0.12, 0, 0]}>
-          <boxGeometry args={[0.038, 0.11, 0.04]} />
-          <meshStandardMaterial color="#E8EEF4" roughness={0.3} />
-        </mesh>
-
-        {/* ─── LEFT EYE: Wide Intelligent Glowing Cyan Eye (Image 1 Exact Match) ─── */}
-        <group position={[-0.18, 0.12, 0.48]}>
-          {/* Recessed Dark Eye Cavity */}
-          <mesh>
-            <circleGeometry args={[0.082, 32]} />
-            <meshStandardMaterial color="#030C17" roughness={0.5} />
-          </mesh>
-          {/* Circular Chrome Bezel Rim (XY plane facing camera) */}
-          <mesh position={[0, 0, 0.008]}>
-            <torusGeometry args={[0.08, 0.008, 16, 32]} />
-            <meshStandardMaterial color="#E2E8F0" roughness={0.15} metalness={0.9} />
-          </mesh>
-          {/* Bright Cyan Glowing Iris Disc */}
-          <mesh ref={leftEyeRef} position={[0, 0, 0.012]}>
-            <circleGeometry args={[0.07, 32]} />
-            <meshStandardMaterial
-              color="#22D3EE"
-              emissive="#22D3EE"
-              emissiveIntensity={1.8}
-              roughness={0.05}
-            />
-          </mesh>
-          {/* Concentric Cyan Ring */}
-          <mesh position={[0, 0, 0.015]}>
-            <torusGeometry args={[0.05, 0.006, 16, 32]} />
-            <meshStandardMaterial color="#A5F3FC" emissive="#22D3EE" emissiveIntensity={2.2} />
-          </mesh>
-          {/* Dark Center Pupil */}
-          <mesh position={[0, 0, 0.018]}>
-            <circleGeometry args={[0.026, 24]} />
-            <meshStandardMaterial color="#020813" roughness={0.9} />
-          </mesh>
-          {/* High-Intensity Cyan Eye PointLight */}
-          <pointLight
-            ref={leftEyeLightRef}
-            position={[0, 0, 0.12]}
-            color="#22D3EE"
-            intensity={1.8}
-            distance={1.5}
-          />
-        </group>
-
-        {/* ─── RIGHT EYE: Wide Intelligent Glowing Cyan Eye (Image 1 Exact Match) ─── */}
-        <group position={[0.18, 0.12, 0.48]}>
-          {/* Recessed Dark Eye Cavity */}
-          <mesh>
-            <circleGeometry args={[0.082, 32]} />
-            <meshStandardMaterial color="#030C17" roughness={0.5} />
-          </mesh>
-          {/* Circular Chrome Bezel Rim (XY plane facing camera) */}
-          <mesh position={[0, 0, 0.008]}>
-            <torusGeometry args={[0.08, 0.008, 16, 32]} />
-            <meshStandardMaterial color="#E2E8F0" roughness={0.15} metalness={0.9} />
-          </mesh>
-          {/* Bright Cyan Glowing Iris Disc */}
-          <mesh ref={rightEyeRef} position={[0, 0, 0.012]}>
-            <circleGeometry args={[0.07, 32]} />
-            <meshStandardMaterial
-              color="#22D3EE"
-              emissive="#22D3EE"
-              emissiveIntensity={1.8}
-              roughness={0.05}
-            />
-          </mesh>
-          {/* Concentric Cyan Ring */}
-          <mesh position={[0, 0, 0.015]}>
-            <torusGeometry args={[0.05, 0.006, 16, 32]} />
-            <meshStandardMaterial color="#A5F3FC" emissive="#22D3EE" emissiveIntensity={2.2} />
-          </mesh>
-          {/* Dark Center Pupil */}
-          <mesh position={[0, 0, 0.018]}>
-            <circleGeometry args={[0.026, 24]} />
-            <meshStandardMaterial color="#020813" roughness={0.9} />
-          </mesh>
-          {/* High-Intensity Cyan Eye PointLight */}
-          <pointLight
-            ref={rightEyeLightRef}
-            position={[0, 0, 0.12]}
-            color="#22D3EE"
-            intensity={1.8}
-            distance={1.5}
-          />
-        </group>
-
-        {/* Friendly Serene Mouth Line (Clean Android Smile Slot) */}
-        <group position={[0, -0.14, 0.49]}>
-          <mesh ref={mouthRef}>
-            <cylinderGeometry args={[0.08, 0.08, 0.014, 16, 1, false, 0, Math.PI]} />
-            <meshStandardMaterial
-              color="#0F172A"
-              emissive="#22D3EE"
-              emissiveIntensity={0.5}
-              roughness={0.3}
-            />
+          <mesh material={fingerMat} position={[0, -0.08, 0]}>
+            <cylinderGeometry args={[0.012, 0.01, 0.05, 16]} />
           </mesh>
         </group>
       </group>
 
-      {/* ─── VIEWER'S LEFT (ROBOT'S RIGHT): WELCOMING / POINTING GESTURE (Image 1 Match) ─── */}
-      <group ref={rightArmRef} position={[-0.52, -0.32, 0.05]}>
-        {/* Upper arm sleeve in doctor white */}
-        <mesh position={[-0.08, -0.06, 0.08]} rotation={[0, 0, 0.28]} material={bodyMat}>
-          <cylinderGeometry args={[0.08, 0.09, 0.35, 20]} />
+      {/* Middle Finger (Curled inward) */}
+      <group position={[0.01, -0.1, 0.01]} rotation={isPointing ? [0.95, 0, 0] : [1.0, 0, 0]}>
+        <mesh material={fingerMat} position={[0, -0.028, 0]}>
+          <cylinderGeometry args={[0.016, 0.014, 0.058, 16]} />
         </mesh>
-        {/* Elbow Joint Sphere */}
-        <mesh position={[-0.14, -0.22, 0.12]} material={chromeMat}>
-          <sphereGeometry args={[0.065, 20, 20]} />
+        <mesh material={jointMat} position={[0, -0.058, 0]}>
+          <torusGeometry args={[0.015, 0.005, 12, 16]} />
         </mesh>
-        {/* Forearm raised welcomingly towards center */}
-        <mesh position={[-0.08, -0.16, 0.28]} rotation={[-0.75, 0.2, 0.25]} material={bodyMat}>
-          <cylinderGeometry args={[0.07, 0.078, 0.32, 20]} />
-        </mesh>
-        {/* Wrist Joint with glowing cyan ring */}
-        <mesh position={[0.02, -0.06, 0.44]} material={chromeMat}>
-          <sphereGeometry args={[0.055, 16, 16]} />
-        </mesh>
-        <mesh position={[0.02, -0.06, 0.44]} rotation={[0, 0.4, 0]}>
-          <torusGeometry args={[0.058, 0.008, 12, 24]} />
-          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.0} />
-        </mesh>
-        {/* Articulated Robotic Hand Palm */}
-        <mesh position={[0.06, -0.02, 0.48]} rotation={[-0.4, 0.3, 0]}>
-          <boxGeometry args={[0.07, 0.09, 0.035]} />
-          <meshStandardMaterial color="#E8EEF4" roughness={0.3} metalness={0.4} />
-        </mesh>
-        {/* Pointing Index Finger upward/forward */}
-        <mesh position={[0.1, 0.08, 0.54]} rotation={[-0.2, 0.2, -0.1]}>
-          <cylinderGeometry args={[0.016, 0.016, 0.09, 14]} />
-          <meshStandardMaterial color="#CBD5E1" roughness={0.25} metalness={0.7} />
-        </mesh>
-        {/* Glowing cyan knuckle ring */}
-        <mesh position={[0.095, 0.06, 0.53]} rotation={[-0.2, 0.2, -0.1]}>
-          <torusGeometry args={[0.019, 0.005, 8, 16]} />
-          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.2} />
-        </mesh>
-        {/* Curled Supporting Robot Fingers */}
-        {[-0.02, -0.05, -0.08].map((y, i) => (
-          <mesh
-            key={`finger-${i}`}
-            position={[0.08, y, 0.51]}
-            rotation={[-0.6, 0.3, 0]}
-          >
-            <cylinderGeometry args={[0.014, 0.014, 0.05, 12]} />
-            <meshStandardMaterial color="#94A3B8" roughness={0.3} metalness={0.8} />
+        <group position={[0, -0.058, 0]} rotation={[0.85, 0, 0]}>
+          <mesh material={fingerMat} position={[0, -0.028, 0]}>
+            <cylinderGeometry args={[0.014, 0.012, 0.055, 16]} />
           </mesh>
-        ))}
+          <mesh material={fingerMat} position={[0, -0.065, 0]}>
+            <cylinderGeometry args={[0.012, 0.01, 0.045, 16]} />
+          </mesh>
+        </group>
       </group>
 
-      {/* ─── VIEWER'S RIGHT (ROBOT'S LEFT): HOLDING MEDICAL CLIPBOARD (Image 1 Match) ─── */}
-      <group position={[0.52, -0.36, 0.15]} rotation={[0.1, -0.28, 0.05]}>
-        {/* Upper arm sleeve */}
-        <mesh position={[0.06, -0.04, 0.06]} rotation={[0, 0, -0.25]} material={bodyMat}>
-          <cylinderGeometry args={[0.08, 0.09, 0.35, 20]} />
+      {/* Ring Finger (Curled inward) */}
+      <group position={[-0.014, -0.098, 0.01]} rotation={[1.1, 0, 0]}>
+        <mesh material={fingerMat} position={[0, -0.025, 0]}>
+          <cylinderGeometry args={[0.015, 0.013, 0.052, 16]} />
         </mesh>
-        {/* Elbow Joint */}
-        <mesh position={[0.12, -0.2, 0.1]} material={chromeMat}>
-          <sphereGeometry args={[0.065, 20, 20]} />
-        </mesh>
-        {/* Forearm angled forward holding board */}
-        <mesh position={[-0.02, -0.12, 0.24]} rotation={[-0.55, -0.2, -0.2]} material={bodyMat}>
-          <cylinderGeometry args={[0.07, 0.078, 0.3, 20]} />
-        </mesh>
-        {/* Hand with cyan wrist ring */}
-        <mesh position={[-0.1, -0.06, 0.36]} material={chromeMat}>
-          <sphereGeometry args={[0.055, 16, 16]} />
-        </mesh>
-        <mesh position={[-0.1, -0.06, 0.36]} rotation={[0, -0.3, 0]}>
-          <torusGeometry args={[0.058, 0.008, 12, 24]} />
-          <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.0} />
-        </mesh>
-
-        {/* Clinical Clipboard Backboard */}
-        <mesh position={[-0.16, 0.04, 0.44]} rotation={[-0.35, -0.25, 0.1]}>
-          <boxGeometry args={[0.44, 0.6, 0.025]} />
-          <meshStandardMaterial color="#94A3B8" roughness={0.3} metalness={0.5} />
-        </mesh>
-        {/* Medical Document / Paper */}
-        <mesh position={[-0.16, 0.04, 0.455]} rotation={[-0.35, -0.25, 0.1]}>
-          <boxGeometry args={[0.39, 0.53, 0.01]} />
-          <meshStandardMaterial color="#FFFFFF" roughness={0.3} />
-        </mesh>
-        {/* Chrome Clip at top */}
-        <mesh position={[-0.16, 0.3, 0.47]} rotation={[-0.35, -0.25, 0.1]} material={chromeMat}>
-          <boxGeometry args={[0.16, 0.055, 0.03]} />
-        </mesh>
-        {/* Clinical Chart Lines & ECG waveform on paper */}
-        {[-0.12, -0.06, 0.0, 0.06, 0.12, 0.18].map((yOff, i) => (
-          <mesh
-            key={`line-${i}`}
-            position={[-0.16, yOff, 0.465]}
-            rotation={[-0.35, -0.25, 0.1]}
-          >
-            <boxGeometry args={[i === 1 ? 0.22 : 0.3, 0.012, 0.004]} />
-            <meshStandardMaterial color={i === 1 ? '#0284C7' : '#64748B'} />
+        <group position={[0, -0.052, 0]} rotation={[0.85, 0, 0]}>
+          <mesh material={fingerMat} position={[0, -0.025, 0]}>
+            <cylinderGeometry args={[0.013, 0.011, 0.05, 16]} />
           </mesh>
-        ))}
+        </group>
+      </group>
 
-        {/* Robotic Fingers Gripping Clipboard Edge */}
-        {[0, 0.04, 0.08, 0.12].map((yOff, i) => (
-          <mesh
-            key={`grip-${i}`}
-            position={[-0.02, yOff - 0.02, 0.48]}
-            rotation={[-0.35, -0.25, 0.1]}
-          >
-            <cylinderGeometry args={[0.013, 0.013, 0.07, 12]} />
-            <meshStandardMaterial color="#CBD5E1" roughness={0.2} metalness={0.7} />
+      {/* Pinky Finger (Curled inward) */}
+      <group position={[-0.035, -0.092, 0.01]} rotation={[1.15, 0, 0]}>
+        <mesh material={fingerMat} position={[0, -0.022, 0]}>
+          <cylinderGeometry args={[0.014, 0.012, 0.045, 16]} />
+        </mesh>
+        <group position={[0, -0.045, 0]} rotation={[0.85, 0, 0]}>
+          <mesh material={fingerMat} position={[0, -0.022, 0]}>
+            <cylinderGeometry args={[0.012, 0.01, 0.04, 16]} />
           </mesh>
-        ))}
+        </group>
+      </group>
+
+      {/* Thumb (Shorter, angled outward from palm) */}
+      <group position={[0.05, -0.035, 0.015]} rotation={[0.4, -0.5, -0.6]}>
+        <mesh material={fingerMat} position={[0, -0.024, 0]}>
+          <cylinderGeometry args={[0.016, 0.014, 0.048, 16]} />
+        </mesh>
+        <mesh material={jointMat} position={[0, -0.048, 0]}>
+          <torusGeometry args={[0.015, 0.005, 12, 16]} />
+        </mesh>
+        <mesh material={fingerMat} position={[0, -0.07, 0]}>
+          <cylinderGeometry args={[0.014, 0.012, 0.045, 16]} />
+        </mesh>
       </group>
     </group>
   )
 }
 
 /**
- * 10 GREETINGS (English and Hindi Alternating)
- * Master Prompt 7, Fix 1 specification
+ * Full Master Prompt 8 Robot Model
  */
-export const ROBOT_GREETINGS = [
-  {
-    id: 1,
-    lang: 'en-IN',
-    text: 'Welcome to NeuroVoice. I am your AI health assistant. I can analyse your voice for early signs of neurological changes. Just thirty seconds is all it takes.',
-  },
-  {
-    id: 2,
-    lang: 'hi-IN',
-    text: 'नमस्ते! मैं NeuroVoice हूँ। आपकी आवाज़ में वो संकेत हैं जो आपकी सेहत के बारे में बहुत कुछ बताते हैं। बस तीस सेकंड बोलिए — हम बाकी काम कर लेंगे।',
-  },
-  {
-    id: 3,
-    lang: 'en-IN',
-    text: 'Hello! Think of me as a doctor who listens to your voice instead of checking your pulse. Thirty seconds of speaking tells me a lot about your neurological health.',
-  },
-  {
-    id: 4,
-    lang: 'hi-IN',
-    text: 'आपका स्वागत है। मैं आपकी आवाज़ को ध्यान से सुनूँगा और बताऊँगा कि क्या कोई बात डॉक्टर से करने लायक है। शुरू करें?',
-  },
-  {
-    id: 5,
-    lang: 'en-IN',
-    text: 'Your voice carries patterns that most people never notice. I listen for tiny changes in pitch, rhythm, and steadiness that can be early signs of neurological conditions. Shall we begin?',
-  },
-  {
-    id: 6,
-    lang: 'hi-IN',
-    text: 'नमस्ते! NeuroVoice में आपका स्वागत है। हिंदी या अंग्रेज़ी — जो भाषा आपको आरामदायक लगे, उसमें बोलिए। हम सब समझ लेंगे।',
-  },
-  {
-    id: 7,
-    lang: 'en-IN',
-    text: 'Good to see you. Early detection of neurological changes can make a real difference. Let me listen to your voice and we will look for patterns together.',
-  },
-  {
-    id: 8,
-    lang: 'hi-IN',
-    text: 'आपकी आवाज़ में है पहला संकेत। मैं उसे सुनकर आपको बताऊँगा कि आगे क्या करना चाहिए। तैयार हैं?',
-  },
-  {
-    id: 9,
-    lang: 'en-IN',
-    text: 'NeuroVoice uses the same voice measurements that neurological researchers use — analysed automatically, explained clearly, available to anyone with a smartphone.',
-  },
-  {
-    id: 10,
-    lang: 'hi-IN',
-    text: 'बस तीस सेकंड की आवाज़। कोई अस्पताल नहीं, कोई मशीन नहीं। सिर्फ आपकी आवाज़ और हमारा विश्लेषण।',
-  },
-]
+function MedicalAIRobotMasterModel({
+  mouse,
+  isSpeaking,
+  isClicking,
+  isMobile,
+  mode,
+}: RobotModelProps) {
+  const robotGroupRef = useRef<THREE.Group>(null)
+  const bodyGroupRef = useRef<THREE.Group>(null)
+  const headGroupRef = useRef<THREE.Group>(null)
+  const rightArmGroupRef = useRef<THREE.Group>(null)
+  const leftEyeMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  const rightEyeMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  const leftEyeLightRef = useRef<THREE.PointLight>(null)
+  const rightEyeLightRef = useRef<THREE.PointLight>(null)
 
+  const clickTimer = useRef(0)
+
+  const { ecgTexture, rightScreenTexture } = useHolographicCanvases()
+
+  // Stethoscope CatmullRom curves per exact spec
+  const { leftStethGeo, rightStethGeo } = useMemo(() => {
+    const leftCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.3, -0.72, 0.1),
+      new THREE.Vector3(-0.16, -0.84, 0.13),
+      new THREE.Vector3(-0.06, -0.92, 0.145),
+      new THREE.Vector3(0, -0.95, 0.15),
+    ])
+    const rightCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.3, -0.72, 0.1),
+      new THREE.Vector3(0.16, -0.84, 0.13),
+      new THREE.Vector3(0.06, -0.92, 0.145),
+      new THREE.Vector3(0, -0.95, 0.15),
+    ])
+    return {
+      leftStethGeo: new THREE.TubeGeometry(leftCurve, 32, 0.018, 16, false),
+      rightStethGeo: new THREE.TubeGeometry(rightCurve, 32, 0.018, 16, false),
+    }
+  }, [])
+
+  // Shared Materials per exact spec
+  const headMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#E8EEF5',
+        metalness: 0.08,
+        roughness: 0.35,
+        envMapIntensity: 0.4,
+      }),
+    []
+  )
+
+  const coatMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#F0F4F8',
+        metalness: 0.05,
+        roughness: 0.45,
+      }),
+    []
+  )
+
+  const lapelMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#E8EEF5',
+        metalness: 0.05,
+        roughness: 0.35,
+        side: THREE.DoubleSide,
+      }),
+    []
+  )
+
+  const tieMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#3A4A5C',
+        roughness: 0.9,
+        side: THREE.DoubleSide,
+      }),
+    []
+  )
+
+  const stethMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#9BAAB8',
+        roughness: 0.5,
+        metalness: 0.2,
+      }),
+    []
+  )
+
+  const eyeMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#4DAEE8',
+        emissive: '#22D3EE',
+        emissiveIntensity: 1.8,
+        transparent: true,
+        opacity: 0.95,
+      }),
+    []
+  )
+
+  useFrame((state, delta) => {
+    const t = state.clock.getElapsedTime()
+
+    // 1. IDLE FLOAT
+    if (robotGroupRef.current) {
+      robotGroupRef.current.position.y = 0.55 + Math.sin(t * 0.7) * 0.06
+    }
+
+    // 2. IDLE BREATHING
+    if (bodyGroupRef.current) {
+      bodyGroupRef.current.scale.y = 1.0 + Math.sin(t * 1.1) * 0.012
+      bodyGroupRef.current.scale.x = 1.0 - Math.sin(t * 1.1) * 0.004
+    }
+
+    // 3. HEAD MOUSE FOLLOW
+    if (headGroupRef.current) {
+      if (isMobile) {
+        headGroupRef.current.rotation.y = Math.sin(t * 0.4) * 0.15
+        headGroupRef.current.rotation.x = Math.sin(t * 0.3) * 0.05
+      } else {
+        const targetRotY = (mouse.x - 0.5) * 0.5
+        const targetRotX = (mouse.y - 0.5) * -0.25
+        headGroupRef.current.rotation.y = THREE.MathUtils.lerp(headGroupRef.current.rotation.y, targetRotY, 0.04)
+        headGroupRef.current.rotation.x = THREE.MathUtils.lerp(headGroupRef.current.rotation.x, targetRotX, 0.04)
+      }
+
+      // 7. CLICK GREETING ANIMATION
+      if (isClicking) {
+        clickTimer.current = 0.7
+      }
+      if (clickTimer.current > 0) {
+        clickTimer.current -= delta
+        if (clickTimer.current > 0.4) {
+          headGroupRef.current.rotation.z = THREE.MathUtils.lerp(headGroupRef.current.rotation.z, 0.18, 0.2)
+        } else {
+          headGroupRef.current.rotation.z = THREE.MathUtils.lerp(headGroupRef.current.rotation.z, 0.0, 0.15)
+        }
+      } else if (isSpeaking) {
+        // Head tilts very slightly while speaking
+        headGroupRef.current.rotation.z = Math.sin(t * 3) * 0.025
+      } else {
+        headGroupRef.current.rotation.z = THREE.MathUtils.lerp(headGroupRef.current.rotation.z, 0.0, 0.05)
+      }
+    }
+
+    // 4. EYE GLOW PULSE & 5. SPEAKING ANIMATION
+    let intensity = 1.5 + Math.sin(t * 2.0) * 0.4
+    if (isSpeaking) {
+      intensity = 2.5 + Math.sin(t * 12) * 1.0
+    }
+    if (leftEyeMatRef.current) leftEyeMatRef.current.emissiveIntensity = intensity
+    if (rightEyeMatRef.current) rightEyeMatRef.current.emissiveIntensity = intensity
+    if (leftEyeLightRef.current) leftEyeLightRef.current.intensity = intensity * 0.5
+    if (rightEyeLightRef.current) rightEyeLightRef.current.intensity = intensity * 0.5
+
+    // Right hand (pointing) moves slightly while speaking
+    if (rightArmGroupRef.current) {
+      if (isSpeaking) {
+        rightArmGroupRef.current.rotation.z = Math.sin(t * 8) * 0.06
+        rightArmGroupRef.current.rotation.x = -0.1 + Math.sin(t * 4) * 0.04
+      } else {
+        rightArmGroupRef.current.rotation.z = THREE.MathUtils.lerp(rightArmGroupRef.current.rotation.z, 0, 0.05)
+        rightArmGroupRef.current.rotation.x = THREE.MathUtils.lerp(rightArmGroupRef.current.rotation.x, 0, 0.05)
+      }
+    }
+
+    // 6. ECG SCREEN ANIMATION (move UV offset leftward each frame)
+    if (ecgTexture) {
+      ecgTexture.offset.x = (t * 0.15) % 1.0
+    }
+  })
+
+  return (
+    <group ref={robotGroupRef} position={[0, 0.55, 0]}>
+      {/* ─── BACKGROUND SCENE: Dark Navy Gradient Backdrop ─── */}
+      <mesh position={[0, -0.6, -2.8]}>
+        <planeGeometry args={[5.0, 5.0]} />
+        <meshBasicMaterial color="#0A1E35" side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* ─── HOLOGRAPHIC SCREENS (Behind Robot) ─── */}
+      {/* LEFT SCREEN: Animated ECG Waveform */}
+      <group position={[-0.9, -0.5, -2.0]} rotation={[0, 0.15, 0]}>
+        <mesh>
+          <planeGeometry args={[1.4, 1.0]} />
+          {ecgTexture ? (
+            <meshBasicMaterial map={ecgTexture} transparent opacity={0.88} side={THREE.DoubleSide} />
+          ) : (
+            <meshBasicMaterial color="#050F28" transparent opacity={0.85} side={THREE.DoubleSide} />
+          )}
+        </mesh>
+        {/* Cyan Glowing Border */}
+        <mesh position={[0, 0, 0.01]}>
+          <planeGeometry args={[1.42, 1.02]} />
+          <meshBasicMaterial color="#22D3EE" wireframe transparent opacity={0.4} />
+        </mesh>
+      </group>
+
+      {/* RIGHT SCREEN: Anatomical Chart & Telemetry Readout */}
+      <group position={[0.9, -0.4, -2.2]} rotation={[0, -0.15, 0]}>
+        <mesh>
+          <planeGeometry args={[1.2, 0.9]} />
+          {rightScreenTexture ? (
+            <meshBasicMaterial map={rightScreenTexture} transparent opacity={0.88} side={THREE.DoubleSide} />
+          ) : (
+            <meshBasicMaterial color="#050F28" transparent opacity={0.85} side={THREE.DoubleSide} />
+          )}
+        </mesh>
+        {/* Cyan Glowing Border */}
+        <mesh position={[0, 0, 0.01]}>
+          <planeGeometry args={[1.22, 0.92]} />
+          <meshBasicMaterial color="#22D3EE" wireframe transparent opacity={0.4} />
+        </mesh>
+      </group>
+
+      {/* ─── HEAD GROUP ─── */}
+      <group ref={headGroupRef} position={[0, 0, 0]}>
+        {/* Head Shape: SphereGeometry(0.42, 64, 64) scaleY: 1.08 */}
+        <mesh position={[0, 0, 0]} scale={[1.0, 1.08, 1.0]} material={headMat}>
+          <sphereGeometry args={[0.42, 64, 64]} />
+        </mesh>
+
+        {/* EYES: Almond/oval concave discs set INTO face */}
+        {/* Left Eye */}
+        <mesh
+          position={[-0.14, 0.05, 0.38]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[1.1, 1.0, 0.9]}
+        >
+          <cylinderGeometry args={[0.09, 0.09, 0.02, 32]} />
+          <primitive object={eyeMat} ref={leftEyeMatRef} attach="material" />
+        </mesh>
+        <pointLight
+          ref={leftEyeLightRef}
+          position={[-0.14, 0.05, 0.42]}
+          color="#22D3EE"
+          intensity={0.9}
+          distance={0.4}
+        />
+
+        {/* Right Eye */}
+        <mesh
+          position={[0.14, 0.05, 0.38]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[1.1, 1.0, 0.9]}
+        >
+          <cylinderGeometry args={[0.09, 0.09, 0.02, 32]} />
+          <primitive object={eyeMat} ref={rightEyeMatRef} attach="material" />
+        </mesh>
+        <pointLight
+          ref={rightEyeLightRef}
+          position={[0.14, 0.05, 0.42]}
+          color="#22D3EE"
+          intensity={0.9}
+          distance={0.4}
+        />
+
+        {/* HEAD TOP EMBLEM: 3 Concentric Rings */}
+        <group position={[0, 0.44, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          {/* Ring 1 (outer) */}
+          <mesh>
+            <torusGeometry args={[0.12, 0.012, 16, 64]} />
+            <meshStandardMaterial color="#8AAABB" metalness={0.5} roughness={0.3} />
+          </mesh>
+          {/* Ring 2 (middle) */}
+          <mesh>
+            <torusGeometry args={[0.075, 0.01, 16, 64]} />
+            <meshStandardMaterial color="#6B9AAD" metalness={0.5} roughness={0.3} />
+          </mesh>
+          {/* Ring 3 (inner) */}
+          <mesh>
+            <torusGeometry args={[0.038, 0.012, 16, 64]} />
+            <meshStandardMaterial color="#4DAEE8" emissive="#22D3EE" emissiveIntensity={0.8} />
+          </mesh>
+          {/* Center Dot */}
+          <mesh position={[0, 0, 0.005]}>
+            <sphereGeometry args={[0.018, 16, 16]} />
+            <meshStandardMaterial color="#22D3EE" emissive="#22D3EE" emissiveIntensity={1.5} />
+          </mesh>
+        </group>
+
+        {/* EAR MODULES */}
+        {/* Left Ear */}
+        <group position={[-0.44, 0.0, 0.0]}>
+          <mesh material={headMat}>
+            <sphereGeometry args={[0.07, 32, 32]} />
+          </mesh>
+          <mesh position={[-0.05, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <circleGeometry args={[0.04, 24]} />
+            <meshStandardMaterial color="#6B9AAD" roughness={0.4} />
+          </mesh>
+        </group>
+
+        {/* Right Ear */}
+        <group position={[0.44, 0.0, 0.0]}>
+          <mesh material={headMat}>
+            <sphereGeometry args={[0.07, 32, 32]} />
+          </mesh>
+          <mesh position={[0.05, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+            <circleGeometry args={[0.04, 24]} />
+            <meshStandardMaterial color="#6B9AAD" roughness={0.4} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* ─── NECK: 3 Stacked Ring Segments + Base Ring ─── */}
+      <group position={[0, 0, 0]}>
+        <mesh position={[0, -0.46, 0]} rotation={[Math.PI / 2, 0, 0]} material={headMat}>
+          <torusGeometry args={[0.14, 0.025, 16, 32]} />
+        </mesh>
+        <mesh position={[0, -0.52, 0]} rotation={[Math.PI / 2, 0, 0]} material={headMat}>
+          <torusGeometry args={[0.14, 0.025, 16, 32]} />
+        </mesh>
+        <mesh position={[0, -0.58, 0]} rotation={[Math.PI / 2, 0, 0]} material={headMat}>
+          <torusGeometry args={[0.14, 0.025, 16, 32]} />
+        </mesh>
+        {/* Base Ring at y: -0.62 */}
+        <mesh position={[0, -0.62, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.18, 0.015, 16, 32]} />
+          <meshStandardMaterial color="#9BAAB8" roughness={0.3} metalness={0.7} />
+        </mesh>
+      </group>
+
+      {/* ─── BODY / TORSO: DOCTOR'S WHITE COAT ─── */}
+      <group ref={bodyGroupRef}>
+        {/* Coat Body: BoxGeometry(0.72, 0.9, 0.22) at (0, -1.1, 0) */}
+        <mesh position={[0, -1.1, 0]} material={coatMat}>
+          <boxGeometry args={[0.72, 0.9, 0.22]} />
+        </mesh>
+
+        {/* Necktie: PlaneGeometry(0.06, 0.38) at (0, -0.95, 0.12) */}
+        <mesh position={[0, -0.95, 0.12]} material={tieMat}>
+          <planeGeometry args={[0.06, 0.38]} />
+        </mesh>
+
+        {/* Left Lapel (viewer's right): flat tapered triangle */}
+        <mesh position={[0.12, -0.88, 0.13]} rotation={[0, 0, -0.16]} material={lapelMat}>
+          <planeGeometry args={[0.18, 0.44]} />
+        </mesh>
+
+        {/* Right Lapel (viewer's left): flat tapered triangle */}
+        <mesh position={[-0.12, -0.88, 0.13]} rotation={[0, 0, 0.16]} material={lapelMat}>
+          <planeGeometry args={[0.18, 0.44]} />
+        </mesh>
+
+        {/* STETHOSCOPE: CatmullRomCurve3 tubes + diaphragm */}
+        <group>
+          <mesh geometry={leftStethGeo} material={stethMat} />
+          <mesh geometry={rightStethGeo} material={stethMat} />
+          {/* Diaphragm Piece at chest meeting point (0, -0.95, 0.15) */}
+          <mesh position={[0, -0.95, 0.15]}>
+            <sphereGeometry args={[0.03, 24, 24]} />
+            <meshStandardMaterial color="#A0ADB8" roughness={0.2} metalness={0.8} />
+          </mesh>
+        </group>
+
+        {/* ─── ARMS AND HANDS ─── */}
+        {/* RIGHT ARM (viewer's LEFT — Pointing Hand) */}
+        <group ref={rightArmGroupRef} position={[-0.42, -0.72, 0]}>
+          {/* Upper Arm: CylinderGeometry(0.09, 0.08, 0.38, 32) at (-0.42, -0.9, 0.0) relative */}
+          <mesh position={[0, -0.18, 0]} rotation={[0.2, 0, 0.32]} material={headMat}>
+            <cylinderGeometry args={[0.09, 0.08, 0.38, 32]} />
+          </mesh>
+
+          {/* Forearm bent at elbow */}
+          <group position={[-0.08, -0.36, 0.08]} rotation={[-0.6, 0.1, 0.2]}>
+            <mesh position={[0, -0.16, 0]} material={headMat}>
+              <cylinderGeometry args={[0.075, 0.07, 0.34, 32]} />
+            </mesh>
+            {/* Wrist Ring */}
+            <mesh position={[0, -0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.078, 0.015, 16, 32]} />
+              <meshStandardMaterial color="#9BAAB8" roughness={0.3} metalness={0.6} />
+            </mesh>
+
+            {/* Hand with 5 fingers: index pointing up/forward */}
+            <group position={[0, -0.33, 0]}>
+              <RoboticHand isPointing={true} isLeft={false} />
+            </group>
+          </group>
+        </group>
+
+        {/* LEFT ARM (viewer's RIGHT — Clipboard Hand) */}
+        <group position={[0.42, -0.72, 0]}>
+          {/* Upper Arm */}
+          <mesh position={[0.02, -0.18, 0]} rotation={[-0.1, 0, -0.18]} material={headMat}>
+            <cylinderGeometry args={[0.09, 0.08, 0.38, 32]} />
+          </mesh>
+
+          {/* Forearm angled forward to hold clipboard */}
+          <group position={[0.06, -0.36, 0.08]} rotation={[0.4, -0.2, -0.1]}>
+            <mesh position={[0, -0.16, 0]} material={headMat}>
+              <cylinderGeometry args={[0.075, 0.07, 0.34, 32]} />
+            </mesh>
+            {/* Wrist Ring */}
+            <mesh position={[0, -0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.078, 0.015, 16, 32]} />
+              <meshStandardMaterial color="#9BAAB8" roughness={0.3} metalness={0.6} />
+            </mesh>
+
+            {/* Hand gripping clipboard */}
+            <group position={[0, -0.33, 0]}>
+              <RoboticHand isPointing={false} isLeft={true} />
+
+              {/* CLIPBOARD */}
+              <group position={[0.04, -0.05, 0.06]} rotation={[-0.3, 0.2, 0]}>
+                {/* Backing: BoxGeometry(0.22, 0.28, 0.018), #C8A878 */}
+                <mesh position={[0, 0, 0]}>
+                  <boxGeometry args={[0.22, 0.28, 0.018]} />
+                  <meshStandardMaterial color="#C8A878" roughness={0.6} />
+                </mesh>
+                {/* Paper: PlaneGeometry(0.18, 0.22), #F5F5F0 */}
+                <mesh position={[0, -0.01, 0.011]}>
+                  <planeGeometry args={[0.18, 0.22]} />
+                  <meshStandardMaterial color="#F5F5F0" roughness={0.9} />
+                </mesh>
+                {/* Clip at top: BoxGeometry(0.08, 0.025, 0.025), #9BAAB8 */}
+                <mesh position={[0, 0.12, 0.016]}>
+                  <boxGeometry args={[0.08, 0.025, 0.025]} />
+                  <meshStandardMaterial color="#9BAAB8" metalness={0.8} roughness={0.2} />
+                </mesh>
+                {/* 4 Paper Lines: thin PlaneGeometry strips, #CCCCCC, 0.3 opacity */}
+                {[0.05, 0.0, -0.05, -0.1].map((ly, i) => (
+                  <mesh key={i} position={[0, ly, 0.013]}>
+                    <planeGeometry args={[0.14, 0.008]} />
+                    <meshBasicMaterial color="#CCCCCC" transparent opacity={0.3} />
+                  </mesh>
+                ))}
+              </group>
+            </group>
+          </group>
+        </group>
+      </group>
+    </group>
+  )
+}
+
+/**
+ * Lighting per exact specification
+ */
+function RobotLighting() {
+  return (
+    <>
+      <ambientLight color="#1A3050" intensity={0.6} />
+      {/* Key light: front-right */}
+      <directionalLight position={[2.5, 3.0, 2.5]} intensity={1.4} color="#FFFFFF" />
+      {/* Fill light: front-left cyan */}
+      <directionalLight position={[-2.0, 1.0, 2.0]} intensity={0.7} color="#88CCEE" />
+      {/* Rim light: behind */}
+      <directionalLight position={[0, -0.5, -3.0]} intensity={0.5} color="#4488BB" />
+    </>
+  )
+}
+
+/**
+ * Exported RobotCanvas Component
+ * Used in BOTH HeroSection and Ask / VoiceIQ page
+ */
 export function RobotCanvas({
   mode = 'hero',
-  externalSpeaking = false,
+  externalSpeaking,
   onSpeechEnd,
 }: RobotCanvasProps) {
   const [mouse, setMouse] = useState({ x: 0.5, y: 0.5 })
@@ -816,19 +763,9 @@ export function RobotCanvas({
   const [isClicking, setIsClicking] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [caption, setCaption] = useState(ROBOT_GREETINGS[0].text)
-  const [spokenWordsCount, setSpokenWordsCount] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
-  const [hasWebGL, setHasWebGL] = useState(true)
 
   useEffect(() => {
-    try {
-      const c = document.createElement('canvas')
-      const gl = c.getContext('webgl') || c.getContext('experimental-webgl')
-      if (!gl) setHasWebGL(false)
-    } catch {
-      setHasWebGL(false)
-    }
-
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window)
     }
@@ -838,7 +775,7 @@ export function RobotCanvas({
   }, [])
 
   useEffect(() => {
-    if (isMobile || mode === 'chat') return
+    if (isMobile) return
 
     const handleMouseMove = (e: MouseEvent) => {
       setMouse({
@@ -848,35 +785,26 @@ export function RobotCanvas({
     }
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
     return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [isMobile, mode])
+  }, [isMobile])
 
-  // Sync external speaking if passed (e.g. In Ask Chatbot mode)
   useEffect(() => {
     if (externalSpeaking !== undefined) {
       setIsSpeaking(externalSpeaking)
     }
   }, [externalSpeaking])
 
-  /**
-   * Speak greeting with priority voice selection
-   */
   const sayHello = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return
-    }
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
 
     window.speechSynthesis.cancel()
 
-    // Trigger click animation (tilts head 15 deg, eye pulse)
     setIsClicking(true)
-    setTimeout(() => setIsClicking(false), 500)
+    setTimeout(() => setIsClicking(false), 700)
 
-    // Cycle through 10 greetings
     const nextIdx = (greetingIndex + 1) % ROBOT_GREETINGS.length
     setGreetingIndex(nextIdx)
     const current = ROBOT_GREETINGS[nextIdx]
     setCaption(current.text)
-    setSpokenWordsCount(0)
 
     if (isMuted) return
 
@@ -885,12 +813,8 @@ export function RobotCanvas({
     utterance.rate = 0.95
     utterance.pitch = 1.0
 
-    // Priority voice selection:
-    // Try 'Google हिन्दी' or any voice with lang 'hi-IN' for Hindi
-    // Try 'Google US English' or any voice with lang 'en-IN'/'en-US' for English
     const voices = window.speechSynthesis.getVoices()
     let selectedVoice = null
-
     if (current.lang === 'hi-IN') {
       selectedVoice =
         voices.find((v) => v.name.includes('Google हिन्दी') || v.name.includes('Hindi')) ||
@@ -902,121 +826,76 @@ export function RobotCanvas({
         voices.find((v) => v.lang.toLowerCase().includes('en-us')) ||
         voices.find((v) => v.lang.toLowerCase().startsWith('en'))
     }
+    if (selectedVoice) utterance.voice = selectedVoice
 
-    if (selectedVoice) {
-      utterance.voice = selectedVoice
-    } else if (voices.length > 0) {
-      utterance.voice = voices[0]
-    }
-
-    // Word boundary tracking for real-time progressive caption updates
-    utterance.onboundary = (event) => {
-      if (event.name === 'word') {
-        setSpokenWordsCount((prev) => prev + 1)
-      }
-    }
-
-    utterance.onstart = () => {
-      setIsSpeaking(true)
-    }
-
+    utterance.onstart = () => setIsSpeaking(true)
     utterance.onend = () => {
       setIsSpeaking(false)
       if (onSpeechEnd) onSpeechEnd()
     }
-
-    utterance.onerror = () => {
-      setIsSpeaking(false)
-      if (onSpeechEnd) onSpeechEnd()
-    }
+    utterance.onerror = () => setIsSpeaking(false)
 
     window.speechSynthesis.speak(utterance)
   }
 
   const toggleMute = () => {
-    const nextMute = !isMuted
-    setIsMuted(nextMute)
-    if (nextMute && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    const next = !isMuted
+    setIsMuted(next)
+    if (next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
       setIsSpeaking(false)
     }
   }
 
   return (
-    <div className="relative w-full rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] p-4 flex flex-col items-center">
-      {/* Top Controls: Mute Toggle Only (NO 'Interactive Acoustic Avatar' or other headings) */}
-      <div className="w-full flex items-center justify-end pb-1 text-xs text-[var(--muted)]">
+    <div className="relative w-full flex flex-col items-center">
+      {/* Container Card */}
+      <div
+        className="relative w-full h-[340px] sm:h-[400px] flex items-center justify-center overflow-hidden rounded-2xl shadow-lg border border-[var(--border)]"
+        style={{
+          background: 'radial-gradient(circle at 40% 50%, #0D2B52 0%, #0A1E35 100%)',
+        }}
+      >
+        {/* Single Mute Button in top-right */}
         <button
           onClick={toggleMute}
           type="button"
-          className="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--surface-2)] text-[var(--text)] transition-colors"
-          title={isMuted ? 'Unmute robot voice' : 'Mute robot voice'}
+          className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-slate-900/70 border border-slate-700/60 backdrop-blur-sm flex items-center justify-center hover:bg-slate-800 transition-colors shadow-sm"
+          title={isMuted ? 'Unmute assistant voice' : 'Mute assistant voice'}
           aria-label={isMuted ? 'Unmute voice' : 'Mute voice'}
         >
           {isMuted ? (
-            <VolumeX size={15} className="text-red-500" />
+            <VolumeX size={15} className="text-red-400" />
           ) : (
-            <Volume2 size={15} className="text-[var(--primary)]" />
+            <Volume2 size={15} className="text-cyan-400" />
           )}
         </button>
-      </div>
 
-      {/* 3D Canvas with Dark Blue Gradient and Holographic Grid Lines */}
-      <div
-        className="relative w-full h-[320px] sm:h-[380px] flex items-center justify-center overflow-hidden rounded-xl"
-        style={{
-          background: 'radial-gradient(circle at 40% 50%, #0D2347 0%, #060D1A 100%)',
-        }}
-      >
-        {/* Subtle holographic grid lines (#1A3A5C with 0.15 opacity) */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: `linear-gradient(to right, #1A3A5C 1px, transparent 1px), linear-gradient(to bottom, #1A3A5C 1px, transparent 1px)`,
-            backgroundSize: '28px 28px',
-            opacity: 0.15,
+        {/* 3D Canvas */}
+        <Canvas
+          camera={{ position: [0, -0.4, 3.2], fov: 42 }}
+          gl={{ alpha: true, antialias: true }}
+          onCreated={({ scene }) => {
+            scene.fog = new THREE.Fog('#0A1E35', 3, 8)
           }}
-        />
+        >
+          <RobotLighting />
+          <MedicalAIRobotMasterModel
+            mouse={mouse}
+            isSpeaking={isSpeaking}
+            isClicking={isClicking}
+            isMobile={isMobile}
+            mode={mode}
+          />
+        </Canvas>
 
-        {hasWebGL ? (
-          <Canvas
-            camera={{ position: [0, 0.15, 2.95], fov: 45 }}
-            gl={{ alpha: true, antialias: true }}
-          >
-            {/* Specified Three-Point Lighting */}
-            {/* Ambient: #1A2A4A, intensity 0.4 */}
-            <ambientLight intensity={0.4} color="#1A2A4A" />
-            {/* Key light: white, intensity 1.2, position (2, 3, 2) */}
-            <directionalLight position={[2, 3, 2]} intensity={1.2} color="#FFFFFF" />
-            {/* Fill light: #22D3EE (cyan), intensity 0.6, position (-2, 0, 1) */}
-            <directionalLight position={[-2, 0, 1]} intensity={0.6} color="#22D3EE" />
-            {/* Rim light: #6366F1 (indigo), intensity 0.4, position (0, -1, -3) */}
-            <directionalLight position={[0, -1, -3]} intensity={0.4} color="#6366F1" />
-
-            <MedicalAIRobotModel
-              mouse={mouse}
-              isSpeaking={isSpeaking}
-              isClicking={isClicking}
-              isMobile={isMobile}
-              mode={mode}
-            />
-          </Canvas>
-        ) : (
-          <div className="flex flex-col items-center justify-center p-6 text-center space-y-3">
-            <div className="w-24 h-24 rounded-full bg-[var(--surface-2)] border-2 border-[var(--primary)] flex items-center justify-center shadow-inner">
-              <Bot size={40} className="text-[var(--primary)]" />
-            </div>
-            <p className="text-xs text-[var(--muted)]">Medical AI Assistant Ready</p>
-          </div>
-        )}
-
-        {/* [Say hello] rounded button below robot (Hero Mode only) */}
+        {/* "Say hello" button for Hero Mode */}
         {mode === 'hero' && (
           <button
             onClick={sayHello}
             disabled={isSpeaking}
             type="button"
-            className="btn-primary absolute bottom-3 px-5 py-2 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 transition-all active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
+            className="btn-primary absolute bottom-3 px-5 py-2 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 transition-all active:scale-95 disabled:opacity-75 z-20"
           >
             <Volume2 size={14} className={isSpeaking ? 'animate-pulse text-cyan-200' : ''} />
             <span>{isSpeaking ? 'Speaking...' : 'Say hello'}</span>
@@ -1024,7 +903,7 @@ export function RobotCanvas({
         )}
       </div>
 
-      {/* Styled Caption Box Below Robot */}
+      {/* Styled Caption Box (Hero Mode) */}
       {mode === 'hero' && (
         <div className="w-full mt-3 p-3.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-center min-h-[54px] flex items-center justify-center gap-2.5">
           <MessageSquareQuote size={16} className="shrink-0 text-[var(--accent)]" />

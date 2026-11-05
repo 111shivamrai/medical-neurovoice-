@@ -6,13 +6,8 @@ import {
   Send,
   Bot,
   User,
-  Sparkles,
   Volume2,
   VolumeX,
-  ShieldAlert,
-  ArrowRight,
-  HelpCircle,
-  RefreshCw,
 } from 'lucide-react'
 import { getLocalUser } from '@/lib/auth'
 
@@ -37,20 +32,21 @@ interface ChatMessage {
 }
 
 const SUGGESTED_QUESTIONS = [
-  'What do my voice stability scores mean?',
-  "How does NeuroVoice detect early Parkinson's signs?",
-  "Can vocal biomarkers distinguish Alzheimer's from normal aging?",
-  'What should I do if my jitter or shimmer is elevated?',
-  'How often should I repeat my voice screening?',
+  "What is Parkinson's disease?",
+  "My result was Moderate — what should I do?",
+  "How does voice analysis detect neurological changes?",
+  "What is dysarthria and how does it affect speech?",
+  "Should I see a doctor if my result was Low?",
+  "How often should I do a voice screening?",
 ]
 
-export default function AskPage() {
+export default function VoiceIQPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome-1',
       role: 'assistant',
       content:
-        'Hello! I am your NeuroVoice Clinical Assistant. You can ask me anything about your vocal biomarkers, neuromuscular acoustic patterns, screening protocols, or when to consult a specialist.',
+        "Hello! I'm here to help you understand your voice health. You can ask me about any of the conditions we screen for, what your results mean, or when to see a doctor.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ])
@@ -138,9 +134,9 @@ export default function AskPage() {
 
       setMessages((prev) => [...prev, botMsg])
       speakAloud(botResponseText)
-    } catch (err) {
+    } catch {
       const fallbackText =
-        'Vocal biomarker analysis evaluates acoustic perturbations (jitter, shimmer, harmonic-to-noise ratio) reflecting subtle neuromuscular coordination changes. While elevated variance warrants specialist clinical correlation, it does not constitute a clinical diagnosis.'
+        'Voice measurements evaluate subtle changes in vocal cord stability and speech flow. While noticeable changes suggest consulting a medical specialist, this screening does not provide a formal medical diagnosis.'
       const botMsg: ChatMessage = {
         id: `ast-${Date.now()}`,
         role: 'assistant',
@@ -164,40 +160,38 @@ export default function AskPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 pb-32">
+    <div className="h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="mb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[var(--surface-2)] border border-[var(--border)] text-[var(--accent)] mb-2">
-          <Sparkles size={13} />
-          <span>Interactive Clinical Assistant</span>
-        </div>
-        <h1 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text)]">
-          Ask NeuroVoice AI
+      <div className="shrink-0 mb-3">
+        <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--text)]">
+          VoiceIQ Assistant
         </h1>
-        <p className="text-sm text-[var(--muted)] mt-1">
-          Real-time clinical insights powered by Gemini medical AI and neurological voice science.
+        <p className="text-xs text-[var(--muted)] mt-0.5">
+          Ask anything about your voice health, your results, or the conditions we screen for. Available in Hindi and English.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column (40%): 3D Medical AI Robot Avatar */}
-        <div className="lg:col-span-5 flex flex-col items-center">
-          <div className="w-full rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface)] shadow-sm p-4">
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border)] text-xs">
-              <span className="font-semibold text-[var(--text)] flex items-center gap-1.5">
-                <Bot size={16} className="text-[var(--accent)]" />
-                Medical Avatar
-              </span>
-              <button
-                onClick={toggleMute}
-                className="p-1 rounded-md border border-[var(--border)] hover:bg-[var(--surface-2)] text-[var(--muted)] transition-colors"
-                title={voiceMuted ? 'Unmute assistant speech' : 'Mute assistant speech'}
-              >
-                {voiceMuted ? <VolumeX size={15} className="text-red-500" /> : <Volume2 size={15} className="text-[var(--primary)]" />}
-              </button>
-            </div>
+      {/* Main 2-Panel Area: fits exactly in one screen, no page scrolling */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-5 items-stretch overflow-hidden pb-1">
+        {/* Left Panel: 38% width, 3D Robot */}
+        <div className="w-full lg:w-[38%] shrink-0 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden p-3 justify-between">
+          <div className="flex items-center justify-between pb-1 border-b border-[var(--border)]">
+            <span className="text-xs font-semibold text-[var(--text-muted)]">
+              AI Voice Guide
+            </span>
+            {/* Single Mute Button in top-right */}
+            <button
+              onClick={toggleMute}
+              className="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--surface-2)] text-[var(--muted)] transition-colors"
+              title="Mute assistant voice"
+              aria-label="Mute assistant voice"
+            >
+              {voiceMuted ? <VolumeX size={15} className="text-red-500" /> : <Volume2 size={15} className="text-[var(--primary)]" />}
+            </button>
+          </div>
 
-            <div className="w-full flex justify-center">
+          <div className="flex-1 flex items-center justify-center py-2 overflow-hidden">
+            <div className="w-full max-w-[340px]">
               <RobotCanvas
                 mode="chat"
                 externalSpeaking={isAssistantSpeaking}
@@ -205,33 +199,34 @@ export default function AskPage() {
               />
             </div>
           </div>
+
+          <div className="text-[11px] text-center text-[var(--muted)] pt-1 border-t border-[var(--border)]">
+            Powered by NeuroVoice AI · Interactive voice synthesis active
+          </div>
         </div>
 
-        {/* Right Column (60%): Interactive Chat Interface */}
-        <div className="lg:col-span-7 flex flex-col h-[650px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden">
-          {/* Clinical Disclaimer Banner */}
-          <div className="bg-[var(--surface-2)] border-b border-[var(--border)] p-3 px-4 flex items-start gap-2.5 text-xs text-[var(--muted)]">
-            <ShieldAlert size={16} className="text-amber-500 shrink-0 mt-0.5" />
-            <p className="leading-relaxed">
-              <strong>Clinical Educational Support:</strong> NeuroVoice Assistant provides screening information and voice science education. It does not provide medical diagnoses or prescriptions. For medical advice, consult a physician.
-            </p>
+        {/* Right Panel: 62% width, Chat Interface */}
+        <div className="w-full lg:w-[62%] flex-1 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm overflow-hidden min-h-0">
+          {/* Disclaimer: Single grey line of small text at top of chat */}
+          <div className="shrink-0 bg-[var(--surface-2)] border-b border-[var(--border)] px-4 py-2 text-[11px] text-[var(--muted)] text-center">
+            General information only. Not a substitute for medical advice.
           </div>
 
-          {/* Chat Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Chat Messages Scroll Area: scroll happens inside this container ONLY */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0 mt-1 border border-[var(--accent)]/30">
-                    <Bot size={16} />
+                  <div className="w-7 h-7 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0 mt-0.5 border border-[var(--accent)]/30">
+                    <Bot size={15} />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-[var(--primary)] text-white rounded-tr-sm shadow-sm'
                       : 'bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-tl-sm'
@@ -239,7 +234,7 @@ export default function AskPage() {
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                   <span
-                    className={`block text-[10px] mt-2 text-right ${
+                    className={`block text-[10px] mt-1.5 text-right ${
                       msg.role === 'user' ? 'text-white/70' : 'text-[var(--muted)]'
                     }`}
                   >
@@ -248,68 +243,68 @@ export default function AskPage() {
                 </div>
 
                 {msg.role === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-[var(--primary)]/15 text-[var(--primary)] flex items-center justify-center shrink-0 mt-1 border border-[var(--primary)]/30">
-                    <User size={16} />
+                  <div className="w-7 h-7 rounded-full bg-[var(--primary)]/15 text-[var(--primary)] flex items-center justify-center shrink-0 mt-0.5 border border-[var(--primary)]/30">
+                    <User size={15} />
                   </div>
                 )}
               </div>
             ))}
 
             {isLoading && (
-              <div className="flex gap-3 items-center text-xs text-[var(--muted)]">
-                <div className="w-8 h-8 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0 border border-[var(--accent)]/30">
-                  <Bot size={16} />
+              <div className="flex gap-2.5 items-center text-xs text-[var(--muted)]">
+                <div className="w-7 h-7 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0 border border-[var(--accent)]/30">
+                  <Bot size={15} />
                 </div>
-                <div className="flex items-center gap-1.5 p-3 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)]">
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)]">
                   <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" />
                   <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce [animation-delay:0.2s]" />
                   <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce [animation-delay:0.4s]" />
-                  <span className="ml-2 text-xs">Analyzing clinical literature...</span>
+                  <span className="ml-2 text-xs">Reviewing medical voice science...</span>
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          {/* Suggested Question Chips */}
-          <div className="px-4 py-2 border-t border-[var(--border)] bg-[var(--surface)] overflow-x-auto flex gap-2 no-scrollbar">
+          {/* 6 Clickable Question Chips: horizontal scrollable row above input */}
+          <div className="shrink-0 px-3 py-2 border-t border-[var(--border)] bg-[var(--surface)] overflow-x-auto flex gap-1.5 no-scrollbar">
             {SUGGESTED_QUESTIONS.map((q, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleSendMessage(q)}
                 disabled={isLoading}
-                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--surface-2)] hover:bg-[var(--border)] text-[var(--text)] border border-[var(--border)] transition-colors text-left"
+                className="shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] hover:bg-[var(--border)] text-[var(--text)] border border-[var(--border)] transition-colors whitespace-nowrap active:scale-95"
               >
                 {q}
               </button>
             ))}
           </div>
 
-          {/* Input Box */}
+          {/* Input Area: fixed at bottom of chat panel */}
           <form
             onSubmit={(e) => {
               e.preventDefault()
               handleSendMessage()
             }}
-            className="p-3 bg-[var(--surface)] border-t border-[var(--border)] flex items-center gap-2"
+            className="shrink-0 p-2.5 bg-[var(--surface)] border-t border-[var(--border)] flex items-center gap-2"
           >
             <input
               type="text"
               value={inputMessage}
               maxLength={200}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Ask a question about your voice biomarkers (max 200 chars)..."
+              placeholder="Ask a question about your voice health (max 200 chars)..."
               disabled={isLoading}
-              className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+              className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl px-3.5 py-2 text-xs sm:text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
             />
             <button
               type="submit"
               disabled={!inputMessage.trim() || isLoading}
-              className="btn-primary p-2.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="btn-primary p-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               aria-label="Send message"
             >
-              <Send size={18} />
+              <Send size={16} />
             </button>
           </form>
         </div>

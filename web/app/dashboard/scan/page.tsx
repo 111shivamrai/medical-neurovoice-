@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Upload,
 } from 'lucide-react'
 import { BRAND } from '@/lib/brand'
 import { getLocalUser } from '@/lib/auth'
@@ -33,6 +34,7 @@ interface TaskState {
   duration: number
   errorMessage: string | null
   cautionMessage?: string | null
+  fileName?: string | null
 }
 
 export default function NewScreeningPage() {
@@ -276,32 +278,31 @@ export default function NewScreeningPage() {
     minDuration: number,
     recordedSec: number
   ): Promise<{ ok: boolean; error?: string; caution?: string; actualDuration: number }> => {
-    const durationToTest = Math.max(recordedSec, 0)
-
-    // HARD BLOCK 1: Duration < 1.0s (truly accidental tap)
-    if (durationToTest < 1.0) {
-      return {
-        ok: false,
-        error: `Recording too short (${durationToTest}s). Please speak for at least ${minDuration} seconds.`,
-        actualDuration: durationToTest,
-      }
-    }
+    let durationToTest = Math.max(recordedSec, 0)
 
     try {
       const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
       if (!AudioCtxClass) {
+        if (durationToTest < 0.8) {
+          return {
+            ok: false,
+            error: `Recording too short (${durationToTest}s). Please speak for at least ${minDuration}s.`,
+            actualDuration: durationToTest,
+          }
+        }
         return { ok: true, actualDuration: durationToTest }
       }
       const ctx = new AudioCtxClass()
       const arrayBuf = await blob.arrayBuffer()
       const audioBuffer = await ctx.decodeAudioData(arrayBuf.slice(0))
       const audioDuration = audioBuffer.duration
+      durationToTest = Number(audioDuration.toFixed(1))
 
-      // Hard block if actual audio file is under 1.0s
-      if (audioDuration < 1.0) {
+      // HARD BLOCK 1: Duration < 0.8s
+      if (audioDuration < 0.8) {
         return {
           ok: false,
-          error: `Recording too short (${audioDuration.toFixed(1)}s). Please speak for at least ${minDuration} seconds.`,
+          error: `Recording too short (${audioDuration.toFixed(1)}s). Please record for at least ${minDuration}s.`,
           actualDuration: Number(audioDuration.toFixed(1)),
         }
       }
@@ -321,8 +322,8 @@ export default function NewScreeningPage() {
       }
       const meanAmplitude = sum / Math.max(1, samplesCount)
 
-      // HARD BLOCK 2: Microphone is completely silent (< 0.0005 amplitude)
-      if (meanAmplitude < 0.0005 && peak < 0.001) {
+      // HARD BLOCK 2: Red block ONLY if amplitude < 0.0008 (true silence)
+      if (meanAmplitude < 0.0008 && peak < 0.0012) {
         return {
           ok: false,
           error: 'No voice detected (microphone is silent). Please check your microphone input.',
@@ -330,20 +331,12 @@ export default function NewScreeningPage() {
         }
       }
 
-      // Soft yellow caution if slightly below target or mildly low volume
+      // Yellow caution (not block): if amplitude is 0.0008-0.002 or duration is slightly short
       let cautionMsg = ''
-      if (audioDuration < minDuration - 0.2) {
+      if (meanAmplitude < 0.002) {
+        cautionMsg = 'Audio is quiet, but proceeding.'
+      } else if (audioDuration < minDuration) {
         cautionMsg = `Recording duration is ${audioDuration.toFixed(1)}s (target: ${minDuration}s). Proceeding with acoustic sample.`
-      }
-
-      // Amplitude threshold: meanAmplitude > 0.003
-      if (meanAmplitude < 0.003) {
-        cautionMsg = (cautionMsg ? cautionMsg + ' ' : '') + 'Voice volume is low. Moving closer to the microphone is recommended.'
-      }
-
-      // SNR threshold for "too noisy": 8dB
-      if (snrValue < 8) {
-        cautionMsg = (cautionMsg ? cautionMsg + ' ' : '') + 'Background noise detected. Moving to a quieter spot is recommended.'
       }
 
       return {
@@ -352,10 +345,10 @@ export default function NewScreeningPage() {
         actualDuration: Number(audioDuration.toFixed(1)),
       }
     } catch {
-      if (durationToTest < 1.0) {
+      if (durationToTest < 0.8) {
         return {
           ok: false,
-          error: `Recording too short (${durationToTest}s). Please speak for at least ${minDuration} seconds.`,
+          error: `Recording too short (${durationToTest}s). Please speak for at least ${minDuration}s.`,
           actualDuration: durationToTest,
         }
       }
@@ -398,8 +391,8 @@ export default function NewScreeningPage() {
       timerRef.current = setInterval(() => {
         setTimerCount((prev) => {
           const next = prev + 1
-          // Task C: 10s chime mark
-          if (taskId === 'c' && next >= 10 && !chimePlayedRef.current) {
+          // Task C: 8s chime mark
+          if (taskId === 'c' && next >= 8 && !chimePlayedRef.current) {
             chimePlayedRef.current = true
             playSoftChime()
           }
@@ -413,7 +406,7 @@ export default function NewScreeningPage() {
       timerRef.current = setInterval(() => {
         setTimerCount((prev) => {
           const next = prev + 1
-          if (taskId === 'c' && next >= 10 && !chimePlayedRef.current) {
+          if (taskId === 'c' && next >= 8 && !chimePlayedRef.current) {
             chimePlayedRef.current = true
             playSoftChime()
           }
@@ -445,8 +438,8 @@ export default function NewScreeningPage() {
     else if (taskId === 'b') setTaskB((prev) => ({ ...prev, status: 'validating' }))
     else if (taskId === 'c') setTaskC((prev) => ({ ...prev, status: 'validating' }))
 
-    // Task durations: Task A: 2.5s, Task B: 1.5s, Task C: 10s
-    const minDur = taskId === 'a' ? 2.5 : taskId === 'b' ? 1.5 : 10
+    // Task durations per Master Prompt 8: Task A: 2.0s, Task B: 1.2s, Task C: 8.0s
+    const minDur = taskId === 'a' ? 2.0 : taskId === 'b' ? 1.2 : 8.0
     const finalSec = timerCount
 
     // Short processing delay for clean verification feel
@@ -494,6 +487,7 @@ export default function NewScreeningPage() {
         duration: result.actualDuration,
         errorMessage: null,
         cautionMessage: result.caution || null,
+        fileName: null,
       })
       setTaskB((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
     } else if (taskId === 'b') {
@@ -504,6 +498,7 @@ export default function NewScreeningPage() {
         duration: result.actualDuration,
         errorMessage: null,
         cautionMessage: result.caution || null,
+        fileName: null,
       })
       setTaskC((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
     } else if (taskId === 'c') {
@@ -514,6 +509,89 @@ export default function NewScreeningPage() {
         duration: result.actualDuration,
         errorMessage: null,
         cautionMessage: result.caution || null,
+        fileName: null,
+      })
+    }
+  }
+
+  // Audio File Upload Refs & Handler
+  const fileInputARef = useRef<HTMLInputElement>(null)
+  const fileInputBRef = useRef<HTMLInputElement>(null)
+  const fileInputCRef = useRef<HTMLInputElement>(null)
+
+  const handleTaskFileUpload = async (taskId: 'a' | 'b' | 'c', file?: File) => {
+    if (!file) return
+
+    const allowedExtensions = ['wav', 'mp3', 'm4a', 'webm', 'ogg']
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    if (!allowedExtensions.includes(ext)) {
+      const err = `Unsupported format (.${ext}). Accepted audio formats: .wav, .mp3, .m4a, .webm, .ogg`
+      if (taskId === 'a') setTaskA((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+      else if (taskId === 'b') setTaskB((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+      else if (taskId === 'c') setTaskC((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      const err = 'File exceeds maximum 10MB limit.'
+      if (taskId === 'a') setTaskA((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+      else if (taskId === 'b') setTaskB((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+      else if (taskId === 'c') setTaskC((prev) => ({ ...prev, status: 'error', errorMessage: err }))
+      return
+    }
+
+    if (taskId === 'a') setTaskA((prev) => ({ ...prev, status: 'validating' }))
+    else if (taskId === 'b') setTaskB((prev) => ({ ...prev, status: 'validating' }))
+    else if (taskId === 'c') setTaskC((prev) => ({ ...prev, status: 'validating' }))
+
+    const minDur = taskId === 'a' ? 2.0 : taskId === 'b' ? 1.2 : 8.0
+    await new Promise((r) => setTimeout(r, 200))
+    const result = await validateAudioChecks(file, minDur, 0)
+
+    if (!result.ok) {
+      const err = result.error || 'Uploaded audio does not meet duration or acoustic quality criteria.'
+      if (taskId === 'a') {
+        setTaskA((prev) => ({ ...prev, status: 'error', duration: result.actualDuration, errorMessage: err, cautionMessage: null }))
+      } else if (taskId === 'b') {
+        setTaskB((prev) => ({ ...prev, status: 'error', duration: result.actualDuration, errorMessage: err, cautionMessage: null }))
+      } else if (taskId === 'c') {
+        setTaskC((prev) => ({ ...prev, status: 'error', duration: result.actualDuration, errorMessage: err, cautionMessage: null }))
+      }
+      return
+    }
+
+    const audioUrl = URL.createObjectURL(file)
+    if (taskId === 'a') {
+      setTaskA({
+        status: 'passed',
+        blob: file,
+        url: audioUrl,
+        duration: result.actualDuration,
+        errorMessage: null,
+        cautionMessage: result.caution || null,
+        fileName: file.name,
+      })
+      setTaskB((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
+    } else if (taskId === 'b') {
+      setTaskB({
+        status: 'passed',
+        blob: file,
+        url: audioUrl,
+        duration: result.actualDuration,
+        errorMessage: null,
+        cautionMessage: result.caution || null,
+        fileName: file.name,
+      })
+      setTaskC((prev) => (prev.status === 'locked' ? { ...prev, status: 'idle' } : prev))
+    } else if (taskId === 'c') {
+      setTaskC({
+        status: 'passed',
+        blob: file,
+        url: audioUrl,
+        duration: result.actualDuration,
+        errorMessage: null,
+        cautionMessage: result.caution || null,
+        fileName: file.name,
       })
     }
   }
@@ -521,11 +599,14 @@ export default function NewScreeningPage() {
   // Re-record handlers
   const handleRerecord = (taskId: 'a' | 'b' | 'c') => {
     if (taskId === 'a') {
-      setTaskA({ status: 'idle', blob: null, url: null, duration: 0, errorMessage: null })
+      setTaskA({ status: 'idle', blob: null, url: null, duration: 0, errorMessage: null, fileName: null })
+      if (fileInputARef.current) fileInputARef.current.value = ''
     } else if (taskId === 'b') {
-      setTaskB({ status: 'idle', blob: null, url: null, duration: 0, errorMessage: null })
+      setTaskB({ status: 'idle', blob: null, url: null, duration: 0, errorMessage: null, fileName: null })
+      if (fileInputBRef.current) fileInputBRef.current.value = ''
     } else if (taskId === 'c') {
-      setTaskC({ status: 'idle', blob: null, url: null, duration: 0, errorMessage: null })
+      setTaskC({ status: 'idle', blob: null, url: null, duration: 0, errorMessage: null, fileName: null })
+      if (fileInputCRef.current) fileInputCRef.current.value = ''
     }
   }
 
@@ -1099,7 +1180,7 @@ export default function NewScreeningPage() {
               {/* Controls */}
               {taskA.status !== 'passed' && taskA.status !== 'validating' ? (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
                       onClick={() =>
@@ -1120,10 +1201,31 @@ export default function NewScreeningPage() {
                       ) : (
                         <>
                           <Mic size={15} />
-                          <span>Record &quot;Aah&quot; (Min 2.5s)</span>
+                          <span>Record &quot;Aah&quot; (Min 2.0s)</span>
                         </>
                       )}
                     </button>
+
+                    <input
+                      ref={fileInputARef}
+                      type="file"
+                      accept=".wav,.mp3,.m4a,.webm,.ogg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleTaskFileUpload('a', file)
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputARef.current?.click()}
+                      disabled={activeRecordingTask !== null}
+                      className="py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center gap-2 border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface)] text-[var(--text)] transition-colors shadow-sm"
+                    >
+                      <Upload size={14} className="text-[var(--primary)]" />
+                      <span>Upload audio file</span>
+                    </button>
+
                     {activeRecordingTask === 'a' && (
                       <span className="text-xs font-mono text-[var(--muted)] animate-pulse">
                         Listening for steady sound...
@@ -1132,15 +1234,17 @@ export default function NewScreeningPage() {
                   </div>
                 </div>
               ) : taskA.status === 'passed' ? (
-                /* Passed State: Green Confirmation Banner per Fix 5 */
+                /* Passed State: Green Confirmation Banner per Fix 5 & 6 */
                 <div className="space-y-3 pt-1">
                   <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="font-semibold">✓ Recording verified — good quality</span>
+                      <span className="font-semibold">
+                        {taskA.fileName ? `✓ File verified — ${taskA.fileName}` : '✓ Recording verified — good quality'}
+                      </span>
                     </div>
                     <span className="font-mono text-[11px] font-bold">
-                      Recorded: {taskA.duration.toFixed(1)} seconds
+                      {taskA.duration.toFixed(1)} seconds
                     </span>
                   </div>
 
@@ -1248,7 +1352,7 @@ export default function NewScreeningPage() {
               {/* Controls */}
               {taskB.status !== 'locked' && taskB.status !== 'passed' && taskB.status !== 'validating' && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
                       onClick={() =>
@@ -1269,10 +1373,31 @@ export default function NewScreeningPage() {
                       ) : (
                         <>
                           <Mic size={15} />
-                          <span>Record Sentence (Min 1.5s)</span>
+                          <span>Record Sentence (Min 1.2s)</span>
                         </>
                       )}
                     </button>
+
+                    <input
+                      ref={fileInputBRef}
+                      type="file"
+                      accept=".wav,.mp3,.m4a,.webm,.ogg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleTaskFileUpload('b', file)
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputBRef.current?.click()}
+                      disabled={activeRecordingTask !== null}
+                      className="py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center gap-2 border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface)] text-[var(--text)] transition-colors shadow-sm"
+                    >
+                      <Upload size={14} className="text-[var(--primary)]" />
+                      <span>Upload audio file</span>
+                    </button>
+
                     {activeRecordingTask === 'b' && (
                       <span className="text-xs font-mono text-[var(--muted)] animate-pulse">
                         Listening for reading voice...
@@ -1287,10 +1412,12 @@ export default function NewScreeningPage() {
                   <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="font-semibold">✓ Recording verified — good quality</span>
+                      <span className="font-semibold">
+                        {taskB.fileName ? `✓ File verified — ${taskB.fileName}` : '✓ Recording verified — good quality'}
+                      </span>
                     </div>
                     <span className="font-mono text-[11px] font-bold">
-                      Recorded: {taskB.duration.toFixed(1)} seconds
+                      {taskB.duration.toFixed(1)} seconds
                     </span>
                   </div>
 
@@ -1390,11 +1517,11 @@ export default function NewScreeningPage() {
                   </div>
                   <div
                     className={`text-xs font-mono font-bold ${
-                      timerCount >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text)]'
+                      timerCount >= 8 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text)]'
                     }`}
                   >
-                    {formatTimer(timerCount, 10)}
-                    {timerCount >= 10 && ' · 10s chime reached ✓'}
+                    {formatTimer(timerCount, 8)}
+                    {timerCount >= 8 && ' · 8s mark reached ✓'}
                   </div>
                 </div>
               )}
@@ -1418,7 +1545,7 @@ export default function NewScreeningPage() {
               {/* Controls */}
               {taskC.status !== 'locked' && taskC.status !== 'passed' && taskC.status !== 'validating' && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
                       onClick={() =>
@@ -1439,13 +1566,34 @@ export default function NewScreeningPage() {
                       ) : (
                         <>
                           <Mic size={15} />
-                          <span>Record Speech (Min 10s)</span>
+                          <span>Record Speech (Min 8.0s)</span>
                         </>
                       )}
                     </button>
+
+                    <input
+                      ref={fileInputCRef}
+                      type="file"
+                      accept=".wav,.mp3,.m4a,.webm,.ogg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleTaskFileUpload('c', file)
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputCRef.current?.click()}
+                      disabled={activeRecordingTask !== null}
+                      className="py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center gap-2 border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface)] text-[var(--text)] transition-colors shadow-sm"
+                    >
+                      <Upload size={14} className="text-[var(--primary)]" />
+                      <span>Upload audio file</span>
+                    </button>
+
                     {activeRecordingTask === 'c' && (
                       <span className="text-xs font-mono text-[var(--muted)]">
-                        Soft chime will sound at 10s mark.
+                        Soft chime will sound at 8s mark.
                       </span>
                     )}
                   </div>
@@ -1457,10 +1605,12 @@ export default function NewScreeningPage() {
                   <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="font-semibold">✓ Recording verified — good quality</span>
+                      <span className="font-semibold">
+                        {taskC.fileName ? `✓ File verified — ${taskC.fileName}` : '✓ Recording verified — good quality'}
+                      </span>
                     </div>
                     <span className="font-mono text-[11px] font-bold">
-                      Recorded: {taskC.duration.toFixed(1)} seconds
+                      {taskC.duration.toFixed(1)} seconds
                     </span>
                   </div>
 
@@ -1593,7 +1743,7 @@ export default function NewScreeningPage() {
                 Vocal Neurological Screening Summary
               </h2>
               <p className="text-xs text-[var(--muted)] leading-relaxed max-w-2xl">
-                Acoustic measurements evaluated across sustained phonation, continuous reading, and conversational speech. Never presents unvalidated accuracy promises.
+                Acoustic measurements evaluated across steady vowel sounds, continuous reading, and conversational speech. Never presents unvalidated accuracy promises.
               </p>
             </div>
           </div>

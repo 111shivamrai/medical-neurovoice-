@@ -209,7 +209,7 @@ export default function ReportsHistoryPage() {
           }`}
         >
           <Calendar size={15} />
-          <span>My progress over time</span>
+          <span>My Timeline</span>
         </button>
         <button
           onClick={() => setActiveTab('compare')}
@@ -220,7 +220,7 @@ export default function ReportsHistoryPage() {
           }`}
         >
           <GitCompare size={15} />
-          <span>Compare two screenings</span>
+          <span>Compare Sessions</span>
         </button>
       </div>
 
@@ -248,11 +248,18 @@ export default function ReportsHistoryPage() {
           ) : (
             sessions.map((sess) => {
               const isExpanded = expandedCard === sess.id
+              const hasElevated = Object.values(sess.conditions || {}).some((c: any) => c?.band === 'Elevated')
+              const hasModerate = Object.values(sess.conditions || {}).some((c: any) => c?.band === 'Moderate')
+              const borderLColor = hasElevated
+                ? 'border-l-4 border-l-red-500'
+                : hasModerate
+                ? 'border-l-4 border-l-amber-500'
+                : 'border-l-4 border-l-emerald-500'
 
               return (
                 <div
                   key={sess.id}
-                  className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:border-[var(--primary)]/60 transition-all overflow-hidden"
+                  className={`rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:border-[var(--primary)]/60 transition-all overflow-hidden ${borderLColor}`}
                 >
                 {/* Collapsed Card Row */}
                 <div className="p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">

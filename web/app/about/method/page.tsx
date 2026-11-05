@@ -7,7 +7,7 @@ export default function ScientificMethodPage() {
   const biomarkers = [
     {
       feature: 'Fundamental Frequency (F0) & Coeff of Variation',
-      description: 'Quantifies vocal pitch stability and subglottic motor control over sustained phonation.',
+      description: 'Quantifies vocal pitch stability and breath support over a steady vowel sound.',
       normal: 'F0 CV < 2.5%, Range: 85–255 Hz',
       citation: 'Little et al. (2007) · Biomedical Engineering',
     },

@@ -25,6 +25,7 @@ export function HeroSection() {
   const [conditionsCount, setConditionsCount] = useState(4)
   const [measurementsCount, setMeasurementsCount] = useState(20)
   const statRef = useRef<HTMLDivElement>(null)
+  const canvasTrailRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const checkWidth = () => setIsMobile(window.innerWidth < 768)
@@ -57,6 +58,62 @@ export function HeroSection() {
 
     if (statRef.current) observer.observe(statRef.current)
 
+    // Hero mouse dot trail: 20 tiny dots (#1B3FA0) that follow cursor with decay
+    const canvas = canvasTrailRef.current
+    let animId: number
+    if (canvas) {
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth)
+        let height = (canvas.height = canvas.parentElement?.clientHeight || window.innerHeight)
+
+        const handleResize = () => {
+          if (!canvas || !canvas.parentElement) return
+          width = canvas.width = canvas.parentElement.clientWidth
+          height = canvas.height = canvas.parentElement.clientHeight
+        }
+        window.addEventListener('resize', handleResize)
+
+        const DOTS_COUNT = 20
+        const points: { x: number; y: number }[] = []
+        let mouse = { x: -100, y: -100 }
+
+        const handleMouseMove = (e: MouseEvent) => {
+          const rect = canvas.getBoundingClientRect()
+          mouse.x = e.clientX - rect.left
+          mouse.y = e.clientY - rect.top
+        }
+        window.addEventListener('mousemove', handleMouseMove)
+
+        const render = () => {
+          ctx.clearRect(0, 0, width, height)
+          points.push({ x: mouse.x, y: mouse.y })
+          if (points.length > DOTS_COUNT) points.shift()
+
+          points.forEach((p, idx) => {
+            if (p.x < 0 || p.y < 0) return
+            const ratio = (idx + 1) / DOTS_COUNT
+            const radius = 1.2 + ratio * 2.2
+            const alpha = ratio * 0.4
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+            ctx.fillStyle = `rgba(27, 63, 160, ${alpha})`
+            ctx.fill()
+          })
+          animId = requestAnimationFrame(render)
+        }
+        render()
+
+        return () => {
+          window.removeEventListener('resize', checkWidth)
+          window.removeEventListener('resize', handleResize)
+          window.removeEventListener('mousemove', handleMouseMove)
+          cancelAnimationFrame(animId)
+          observer.disconnect()
+        }
+      }
+    }
+
     return () => {
       window.removeEventListener('resize', checkWidth)
       observer.disconnect()
@@ -66,8 +123,14 @@ export function HeroSection() {
   return (
     <section
       id="hero"
-      className="hero-radial-bg relative min-h-[92vh] flex items-center justify-center pt-28 pb-16 transition-colors duration-200"
+      className="hero-radial-bg relative min-h-[92vh] flex items-center justify-center pt-28 pb-16 transition-colors duration-200 overflow-hidden"
     >
+      {/* 20 Mouse Dot Trail Canvas */}
+      <canvas
+        ref={canvasTrailRef}
+        className="absolute inset-0 w-full h-full pointer-events-none z-0"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Left: 3D Interactive Listening Robot */}
@@ -128,7 +191,7 @@ export function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               className="text-base sm:text-lg text-[var(--muted)] leading-relaxed mb-3 max-w-xl"
             >
-              NeuroVoice listens for subtle neuromuscular biomarker deviations in your speech — in Hindi or English,
+              NeuroVoice listens for tiny voice changes in your speech — in Hindi or English,
               on any phone, without complex laboratory equipment.
             </motion.p>
 

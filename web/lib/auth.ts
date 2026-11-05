@@ -48,7 +48,9 @@ export function setLocalUser(user: UserSession): void {
     localStorage.setItem(AUTH_TOKEN_KEY, `token-${user.uid}`)
     if (user.role) localStorage.setItem(ROLE_KEY, user.role)
     if (typeof document !== 'undefined') {
-      document.cookie = `firebase-token=${encodeURIComponent(user.uid)}; path=/; max-age=604800; SameSite=Lax`
+      const cookieVal = encodeURIComponent(user.uid)
+      document.cookie = `firebase-token=${cookieVal}; path=/; max-age=604800; SameSite=Lax`
+      document.cookie = `__session=${cookieVal}; path=/; max-age=604800; SameSite=Lax`
     }
     window.dispatchEvent(new Event('neurovoice-auth-change'))
   } catch {
@@ -64,6 +66,7 @@ export function clearLocalUser(): void {
     localStorage.removeItem(ROLE_KEY)
     if (typeof document !== 'undefined') {
       document.cookie = 'firebase-token=; path=/; max-age=0; SameSite=Lax'
+      document.cookie = '__session=; path=/; max-age=0; SameSite=Lax'
     }
     sessionStorage.clear()
     window.dispatchEvent(new Event('neurovoice-auth-change'))

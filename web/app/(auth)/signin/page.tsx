@@ -85,17 +85,6 @@ function SignInContent() {
     }
   }
 
-  const handleDemoSignIn = () => {
-    setLocalUser({
-      uid: 'demo-clinician-01',
-      email: 'demo@neurovoice.org',
-      displayName: 'Clinical Demo User',
-      role: 'patient',
-      isDemo: true,
-    })
-    router.replace(nextRoute)
-  }
-
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
     setError(null)
@@ -111,14 +100,19 @@ function SignInContent() {
         isDemo: false,
       })
       document.cookie = `firebase-token=${user.uid}; path=/; max-age=604800; SameSite=Lax`
+      document.cookie = `__session=${user.uid}; path=/; max-age=604800; SameSite=Lax`
 
-      // Check if user already exists in MongoDB
+      // Check if user exists in MongoDB
       try {
         const checkRes = await fetch(`/api/users/${user.uid}`)
+        if (checkRes.status === 404) {
+          router.replace('/onboarding?source=google')
+          return
+        }
         if (checkRes.ok) {
           const checkData = await checkRes.json()
-          if (checkData.exists && checkData.user?.onboardingComplete) {
-            router.replace(nextRoute)
+          if (!checkData.exists || !checkData.user?.onboardingComplete) {
+            router.replace('/onboarding?source=google')
             return
           }
         }
@@ -126,17 +120,10 @@ function SignInContent() {
         console.warn('User status check note:', checkErr)
       }
 
-      // New user without role -> onboarding
-      router.replace('/onboarding?source=google')
+      router.replace(nextRoute)
     } catch (err: any) {
       console.warn('Google sign-in error:', err?.code || err?.message)
-      if (
-        err?.code === 'auth/api-key-not-valid' ||
-        err?.code === 'auth/invalid-api-key' ||
-        isDemoMode()
-      ) {
-        handleDemoSignIn()
-      } else if (err?.code !== 'auth/popup-closed-by-user') {
+      if (err?.code !== 'auth/popup-closed-by-user') {
         setError('Google authentication could not be completed. Please try again.')
       }
     } finally {
@@ -267,16 +254,6 @@ function SignInContent() {
               </svg>
             )}
             <span>Sign in with Google</span>
-          </button>
-
-          {/* Quick Demo Login Option */}
-          <button
-            type="button"
-            onClick={handleDemoSignIn}
-            className="w-full py-2.5 rounded-xl text-xs font-semibold border border-[var(--primary)]/30 text-[var(--primary)] bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-colors flex items-center justify-center gap-1.5"
-          >
-            <ShieldCheck size={15} />
-            <span>Continue as Demo Account (Instant Access)</span>
           </button>
         </div>
 

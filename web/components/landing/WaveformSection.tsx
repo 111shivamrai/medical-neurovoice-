@@ -77,8 +77,8 @@ export function WaveformSection() {
       <div className="max-w-7xl mx-auto space-y-16">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-3">
-          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--accent)]">
-            Simple 3-Step Process
+          <span className="text-xs font-semibold text-[var(--accent)]">
+            Simple 3-step process
           </span>
           <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-[var(--text)] tracking-tight">
             How NeuroVoice Works

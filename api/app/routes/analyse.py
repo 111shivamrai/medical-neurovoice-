@@ -14,6 +14,7 @@ ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".webm", ".ogg"}
 MAX_FILE_SIZE = 10 * 1024 * 1024 # 10MB
 
 @router.post("/analyse")
+@router.post("/screen/tasks")
 async def analyse_voice_recording(
     audio: Optional[UploadFile] = File(None),
     file: Optional[UploadFile] = File(None),
@@ -157,5 +158,6 @@ async def analyse_voice_recording(
 
     # Save to MongoDB or in-memory fallback
     await db_manager.save_screening(record)
+    print(f"[STAGE 9] Report generated: report_id={screening_id}")
 
     return record

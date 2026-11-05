@@ -251,17 +251,17 @@ export function DisordersSection() {
                 style={{ borderColor: isDark ? '#1F2937' : '#E2E8F0' }}
               >
                 <div>
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-gray-400 block mb-1">
-                    Key Biomarkers
+                  <span className="text-xs text-gray-400 font-medium block mb-1">
+                    Key voice indicators
                   </span>
-                  <p className="font-mono text-xs sm:text-sm font-semibold" style={{ color: disorder.accent }}>
+                  <p className="text-xs sm:text-sm font-semibold" style={{ color: disorder.accent }}>
                     {disorder.biomarkers}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 sm:text-right">
                   <div>
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-gray-400 block">
+                    <span className="text-xs text-gray-400 font-medium block">
                       {disorder.statLabel}
                     </span>
                     <span className="font-display font-bold text-lg text-emerald-400">

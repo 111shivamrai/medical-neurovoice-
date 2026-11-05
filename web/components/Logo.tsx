@@ -83,10 +83,19 @@ export function Logo({
       >
         {/* Subtle base card badge */}
         <rect width="32" height="32" rx="8" fill="var(--surface-2)" stroke="var(--border)" strokeWidth="1.2" />
-        {/* Acoustic Waveform Bars */}
-        <path d="M7 16V16.01" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M10 12V20" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M13 9V23" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" />
+        {/* Acoustic Waveform Bars with subtle wave animation */}
+        <line x1="7" y1="14" x2="7" y2="18" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round">
+          <animate attributeName="y1" values="14;12;14" dur="1.6s" repeatCount="indefinite" />
+          <animate attributeName="y2" values="18;20;18" dur="1.6s" repeatCount="indefinite" />
+        </line>
+        <line x1="10" y1="11" x2="10" y2="21" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round">
+          <animate attributeName="y1" values="11;8;11" dur="1.4s" begin="0.2s" repeatCount="indefinite" />
+          <animate attributeName="y2" values="21;24;21" dur="1.4s" begin="0.2s" repeatCount="indefinite" />
+        </line>
+        <line x1="13" y1="9" x2="13" y2="23" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round">
+          <animate attributeName="y1" values="9;6;9" dur="1.5s" begin="0.4s" repeatCount="indefinite" />
+          <animate attributeName="y2" values="23;26;23" dur="1.5s" begin="0.4s" repeatCount="indefinite" />
+        </line>
         {/* Transitioning bridge path connecting to neuron node */}
         <path d="M13 16H20" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
         {/* Neuron Soma (Central Node) */}

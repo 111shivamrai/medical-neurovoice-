@@ -59,45 +59,31 @@ export function FloatingDock() {
 
       {/* Floating Popover Menus */}
       <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
-        {/* Reports Submenu */}
+        {/* Reports Submenu (Fix 7: 2 options only) */}
         {activeMenu === 'reports' && (
           <div className="w-56 p-2 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl backdrop-blur-xl mb-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-            <div className="text-[11px] font-mono text-[var(--text-muted)] px-3 py-1.5 uppercase tracking-wider">
-              Diagnostic Reports
-            </div>
             <Link
               href="/dashboard/history"
               onClick={() => setActiveMenu(null)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors"
             >
               <FileText size={16} className="text-[var(--primary)]" />
-              All Reports
+              My Reports
             </Link>
             <Link
-              href="/dashboard/history"
+              href="/dashboard/history#timeline"
               onClick={() => setActiveMenu(null)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors"
             >
               <History size={16} className="text-[var(--accent)]" />
-              Patient Timeline
-            </Link>
-            <Link
-              href="/dashboard/history#compare"
-              onClick={() => setActiveMenu(null)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors"
-            >
-              <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-[var(--surface-2)] text-[var(--accent)]">Δ</span>
-              Compare Biomarkers
+              Screening Timeline
             </Link>
           </div>
         )}
 
-        {/* Care Submenu */}
+        {/* Care Submenu (Fix 7: 2 options only) */}
         {activeMenu === 'care' && (
           <div className="w-56 p-2 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl backdrop-blur-xl mb-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-            <div className="text-[11px] font-mono text-[var(--text-muted)] px-3 py-1.5 uppercase tracking-wider">
-              Clinical Care Network
-            </div>
             <Link
               href="/dashboard/doctors"
               onClick={() => setActiveMenu(null)}
@@ -112,17 +98,14 @@ export function FloatingDock() {
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors"
             >
               <Calendar size={16} className="text-[var(--success)]" />
-              Appointments
+              My Appointments
             </Link>
           </div>
         )}
 
-        {/* Me Submenu */}
+        {/* Me Submenu (Fix 3 & Fix 7: 2 options only, no headers, no preferences) */}
         {activeMenu === 'me' && (
-          <div className="w-56 p-2 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl backdrop-blur-xl mb-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-            <div className="text-[11px] font-mono text-[var(--text-muted)] px-3 py-1.5 uppercase tracking-wider">
-              Account & Role
-            </div>
+          <div className="w-52 p-2 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl backdrop-blur-xl mb-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
             <Link
               href="/dashboard/profile"
               onClick={() => setActiveMenu(null)}
@@ -131,36 +114,15 @@ export function FloatingDock() {
               <User size={16} className="text-[var(--primary)]" />
               My Profile
             </Link>
-            <Link
-              href="/dashboard/profile"
-              onClick={() => setActiveMenu(null)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors"
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors text-left"
             >
-              <Settings size={16} className="text-[var(--text-muted)]" />
-              Preferences
-            </Link>
-
-            {isAdmin && (
-              <Link
-                href="/admin"
-                onClick={() => setActiveMenu(null)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--warning)] hover:bg-[var(--surface-2)] transition-colors"
-              >
-                <ShieldAlert size={16} />
-                Admin Panel ↗
-              </Link>
-            )}
-
-            <div className="pt-1.5 mt-1.5 border-t border-[var(--border)]">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors text-left"
-              >
-                <LogOut size={16} />
-                Sign Out
-              </button>
-            </div>
+              <LogOut size={16} />
+              Sign Out
+            </button>
           </div>
         )}
       </div>
@@ -230,7 +192,7 @@ export function FloatingDock() {
             </span>
           </button>
 
-          {/* 5. Ask (AI Health Assistant) */}
+          {/* 5. VoiceIQ (formerly Ask) */}
           <Link
             href="/dashboard/ask"
             onClick={() => setActiveMenu(null)}
@@ -241,7 +203,7 @@ export function FloatingDock() {
             }`}
           >
             <Bot size={20} />
-            <span className="text-[10px] tracking-tight">Ask</span>
+            <span className="text-[10px] tracking-tight">VoiceIQ</span>
           </Link>
 
           {/* 6. Me */}

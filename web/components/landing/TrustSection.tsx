@@ -11,7 +11,7 @@ export function TrustSection() {
       heading: "UCI Parkinson's Voice Dataset",
       sub: 'Oxford University & UCI Machine Learning Repository',
       description:
-        "Recordings from 31 individuals (23 with Parkinson's, 8 healthy) performing sustained phonations. Used to establish baseline thresholds for vocal tremor (jitter), amplitude perturbation (shimmer), and harmonic clarity.",
+        "Recordings from 31 individuals (23 with Parkinson's, 8 healthy) performing steady vowel sounds. Used to establish baseline thresholds for vocal tremor (jitter), amplitude stability (shimmer), and harmonic clarity.",
       badge: '195 voice recordings · Sustained vowels',
       linkText: 'View dataset details →',
       url: 'https://archive.ics.uci.edu/dataset/174/parkinsons',

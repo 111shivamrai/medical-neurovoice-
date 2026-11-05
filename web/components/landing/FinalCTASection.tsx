@@ -16,8 +16,8 @@ export function FinalCTASection() {
       />
 
       <div className="max-w-4xl mx-auto text-center relative z-10 p-10 sm:p-14 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-xl">
-        <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">
-          <Sparkles size={14} /> Free Research Screening
+        <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold mb-6 bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">
+          <Sparkles size={14} /> Free research screening
         </span>
 
         <h2 className="text-3xl sm:text-5xl font-display font-extrabold text-[var(--text)] tracking-tight mb-4">
